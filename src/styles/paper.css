@@ -1,0 +1,18 @@
+:root {
+  --paper-width: 794px;
+  --paper-padding-x: 56px;
+  --paper-padding-y: 52px;
+  --paper-border: #cbd5e1;
+  --paper-shadow: 0 14px 45px rgba(15, 23, 42, 0.14);
+  --paper-font: 'Times New Roman', Georgia, serif;
+}
+
+.paper-page {
+  width: 100%;
+  max-width: var(--paper-width);
+  border: 1px solid var(--paper-border);
+  background: white;
+  padding: var(--paper-padding-y) var(--paper-padding-x);
+  box-shadow: var(--paper-shadow);
+  font-family: var(--paper-font);
+}

@@ -1,0 +1,75 @@
+import type { BlockType } from '@/types/exam'
+import { Button } from '@/components/ui/Button'
+
+type Props = {
+  open: boolean
+  insertionIndex: number
+  onClose: () => void
+  onSelect: (type: BlockType, insertionIndex: number) => void
+}
+
+const options: Array<{ type: BlockType; label: string; description: string }> = [
+  {
+    type: 'essay',
+    label: 'Short Answer / Essay',
+    description: 'Prompt with configurable answer lines.',
+  },
+  {
+    type: 'mcq',
+    label: 'Multiple Choice',
+    description: 'Prompt with 2 to 6 options and optional answer key.',
+  },
+  {
+    type: 'true_false',
+    label: 'True / False',
+    description: 'Prompt with boolean answer metadata.',
+  },
+  {
+    type: 'fill_blank',
+    label: 'Fill in the Blank',
+    description: 'Prompt with blank answers metadata.',
+  },
+  {
+    type: 'image_question',
+    label: 'Image Question',
+    description: 'Prompt with image, caption, and layout controls.',
+  },
+]
+
+export const InsertQuestionDialog = ({
+  open,
+  insertionIndex,
+  onClose,
+  onSelect,
+}: Props) => {
+  if (!open) {
+    return null
+  }
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/35 p-3" role="dialog" aria-modal>
+      <div className="w-full max-w-xl rounded-xl border border-slate-200 bg-white p-4 shadow-2xl">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">Insert Question</h2>
+          <Button variant="ghost" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+
+        <div className="grid gap-2">
+          {options.map((option) => (
+            <button
+              key={option.type}
+              type="button"
+              onClick={() => onSelect(option.type, insertionIndex)}
+              className="rounded-md border border-slate-200 p-3 text-left transition hover:border-slate-400"
+            >
+              <p className="text-sm font-semibold text-slate-900">{option.label}</p>
+              <p className="mt-1 text-xs text-slate-600">{option.description}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}

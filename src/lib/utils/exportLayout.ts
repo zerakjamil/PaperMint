@@ -1,0 +1,64 @@
+export type Size = {
+  width: number
+  height: number
+}
+
+export const fitWithinBox = (
+  source: Size,
+  bounds: Size,
+  allowUpscale = false,
+): Size => {
+  if (source.width <= 0 || source.height <= 0) {
+    return { width: bounds.width, height: bounds.height }
+  }
+
+  const widthRatio = bounds.width / source.width
+  const heightRatio = bounds.height / source.height
+  const ratio = allowUpscale
+    ? Math.min(widthRatio, heightRatio)
+    : Math.min(widthRatio, heightRatio, 1)
+
+  return {
+    width: Math.max(1, Math.round(source.width * ratio)),
+    height: Math.max(1, Math.round(source.height * ratio)),
+  }
+}
+
+export const getImageTypeFromDataUrl = (dataUrl: string): 'png' | 'jpg' => {
+  const mime = dataUrl.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,/)?.[1] ?? ''
+
+  if (mime === 'image/jpeg' || mime === 'image/jpg') {
+    return 'jpg'
+  }
+
+  if (mime === 'image/png') {
+    return 'png'
+  }
+
+  return 'png'
+}
+
+export const getImageDimensionsFromDataUrl = async (
+  dataUrl: string,
+): Promise<Size> => {
+  if (typeof Image === 'undefined') {
+    return { width: 1200, height: 800 }
+  }
+
+  return new Promise<Size>((resolve, reject) => {
+    const image = new Image()
+
+    image.onload = () => {
+      resolve({
+        width: image.naturalWidth || image.width || 1200,
+        height: image.naturalHeight || image.height || 800,
+      })
+    }
+
+    image.onerror = () => {
+      reject(new Error('Unable to read image dimensions.'))
+    }
+
+    image.src = dataUrl
+  })
+}
