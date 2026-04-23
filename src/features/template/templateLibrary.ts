@@ -167,7 +167,7 @@ const presets: TemplatePreset[] = [
     id: 'shaqlawa_linux_gui',
     name: 'Shaqlawa Linux (GUI)',
     description:
-      'Linux (GUI) first-round exam template with Kurdish cover sheet, fixed metadata, and editable question content.',
+      'Linux (GUI) first-round exam template with Kurdish cover sheet and fully editable metadata fields.',
     rules: {
       enforcedHeaderDisplayMode: 'value_only',
       enforcedFooterDisplayMode: 'value_only',
@@ -216,6 +216,36 @@ const presets: TemplatePreset[] = [
         label: 'Institution Name (English)',
         value: 'Shaqlawa private Institute',
         style: { alignment: 'right', bold: true, fontSizePt: 12 },
+      },
+      {
+        label: 'Subject',
+        value: 'Linux (GUI)',
+        style: { alignment: 'right', bold: false, fontSizePt: 11 },
+      },
+      {
+        label: 'Department',
+        value: 'کۆمپیوتەر',
+        style: { alignment: 'right', bold: false, fontSizePt: 11 },
+      },
+      {
+        label: 'Stage',
+        value: 'سێیەم',
+        style: { alignment: 'right', bold: false, fontSizePt: 11 },
+      },
+      {
+        label: 'Duration',
+        value: '1:30 كاتژێر',
+        style: { alignment: 'right', bold: false, fontSizePt: 11 },
+      },
+      {
+        label: 'Academic Year',
+        value: '2025-2026',
+        style: { alignment: 'center', bold: true, fontSizePt: 14 },
+      },
+      {
+        label: 'Round',
+        value: 'خوولی یهكهم',
+        style: { alignment: 'center', bold: true, fontSizePt: 14 },
       },
       {
         label: 'Course Metadata',

@@ -141,6 +141,8 @@ const getSectionItems = (project: ExamProject, sectionId: string) => {
   return section?.items ?? []
 }
 
+const EMPTY_ITEMS: QuestionBlockType[] = []
+
 export const useExamStore = create<ExamStoreState>((set, get) => ({
   project: defaultProject,
   questionBank: [],
@@ -797,7 +799,7 @@ export const selectCurrentSection = (state: ExamStoreState) =>
   state.project.sections[0]
 
 export const selectCurrentItems = (state: ExamStoreState) =>
-  selectCurrentSection(state)?.items ?? []
+  selectCurrentSection(state)?.items ?? EMPTY_ITEMS
 
 export const selectSelectedBlock = (state: ExamStoreState) => {
   const items = selectCurrentItems(state)

@@ -287,8 +287,7 @@ describe('exam store', () => {
     const next = useExamStore.getState().project
     expect(next.settings?.templatePresetId).toBe('shaqlawa_linux_gui')
     expect(next.settings?.targetTotalMarks).toBe(60)
-    expect(next.sections).toHaveLength(4)
-    expect(next.sections[0]?.title).toBe('Q1/ Choose the right answer:')
-    expect(Object.values(next.assets).some((asset) => asset.path === '/templates/linux-gui-q4.png')).toBe(true)
+    expect(next.sections).toHaveLength(0)
+    expect(Object.keys(next.assets)).toHaveLength(0)
   })
 })

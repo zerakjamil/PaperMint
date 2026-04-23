@@ -13,8 +13,32 @@ export type AutosaveWriteTarget =
   | 'indexed-db'
   | 'local-storage-slim'
 
-export const readAutosaveProject = (storage: Storage): ExamProject | null => {
-  const value = storage.getItem(AUTOSAVE_STORAGE_KEY)
+type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
+
+const asStorageLike = (storage: unknown): StorageLike | null => {
+  if (!storage || typeof storage !== 'object') {
+    return null
+  }
+
+  const candidate = storage as Partial<StorageLike>
+  if (
+    typeof candidate.getItem !== 'function' ||
+    typeof candidate.setItem !== 'function' ||
+    typeof candidate.removeItem !== 'function'
+  ) {
+    return null
+  }
+
+  return candidate as StorageLike
+}
+
+export const readAutosaveProject = (storage: Storage | null | undefined): ExamProject | null => {
+  const safeStorage = asStorageLike(storage)
+  if (!safeStorage) {
+    return null
+  }
+
+  const value = safeStorage.getItem(AUTOSAVE_STORAGE_KEY)
   if (!value) {
     return null
   }
@@ -22,17 +46,27 @@ export const readAutosaveProject = (storage: Storage): ExamProject | null => {
   try {
     return parseProjectText(value)
   } catch {
-    storage.removeItem(AUTOSAVE_STORAGE_KEY)
+    safeStorage.removeItem(AUTOSAVE_STORAGE_KEY)
     return null
   }
 }
 
-export const writeAutosaveProject = (storage: Storage, project: ExamProject) => {
-  storage.setItem(AUTOSAVE_STORAGE_KEY, JSON.stringify(project))
+export const writeAutosaveProject = (storage: Storage | null | undefined, project: ExamProject) => {
+  const safeStorage = asStorageLike(storage)
+  if (!safeStorage) {
+    return
+  }
+
+  safeStorage.setItem(AUTOSAVE_STORAGE_KEY, JSON.stringify(project))
 }
 
-export const clearAutosaveProject = (storage: Storage) => {
-  storage.removeItem(AUTOSAVE_STORAGE_KEY)
+export const clearAutosaveProject = (storage: Storage | null | undefined) => {
+  const safeStorage = asStorageLike(storage)
+  if (!safeStorage) {
+    return
+  }
+
+  safeStorage.removeItem(AUTOSAVE_STORAGE_KEY)
 }
 
 const openAutosaveDb = () =>
@@ -134,7 +168,7 @@ const stripHeavyPayloads = (project: ExamProject): ExamProject => ({
 })
 
 export const readAutosaveProjectWithFallback = async (
-  storage: Storage,
+  storage: Storage | null | undefined,
 ): Promise<{ project: ExamProject | null; source: AutosaveReadSource }> => {
   const local = readAutosaveProject(storage)
   if (local) {
@@ -154,28 +188,36 @@ export const readAutosaveProjectWithFallback = async (
 }
 
 export const writeAutosaveProjectWithFallback = async (
-  storage: Storage,
+  storage: Storage | null | undefined,
   project: ExamProject,
 ): Promise<AutosaveWriteTarget> => {
-  try {
-    writeAutosaveProject(storage, project)
-    return 'local-storage'
-  } catch {
-    try {
-      const savedToIndexedDb = await writeIndexedDbAutosave(project)
-      if (savedToIndexedDb) {
-        return 'indexed-db'
-      }
-    } catch {
-      // Fall through to slim local draft fallback.
-    }
+  const safeStorage = asStorageLike(storage)
 
-    writeAutosaveProject(storage, stripHeavyPayloads(project))
-    return 'local-storage-slim'
+  if (safeStorage) {
+    try {
+      writeAutosaveProject(safeStorage as Storage, project)
+      return 'local-storage'
+    } catch {
+      // Try indexedDB and then slim local fallback.
+    }
   }
+
+  try {
+    const savedToIndexedDb = await writeIndexedDbAutosave(project)
+    if (savedToIndexedDb) {
+      return 'indexed-db'
+    }
+  } catch {
+    // Fall through to slim local draft fallback.
+  }
+
+  writeAutosaveProject(safeStorage as Storage | null, stripHeavyPayloads(project))
+  return 'local-storage-slim'
 }
 
-export const clearAutosaveProjectWithFallback = async (storage: Storage) => {
+export const clearAutosaveProjectWithFallback = async (
+  storage: Storage | null | undefined,
+) => {
   clearAutosaveProject(storage)
   try {
     await clearIndexedDbAutosave()

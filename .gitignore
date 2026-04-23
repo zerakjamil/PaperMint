@@ -30,3 +30,4 @@ entities.json
 
 agents/
 .github/
+.lancedb/

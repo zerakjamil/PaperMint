@@ -1,12 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import {
-  selectCurrentSection,
-  selectCurrentItems,
-  selectIsDirty,
-  selectQuestionBank,
-  selectSelectedBlock,
-  selectSnippets,
   useExamStore,
 } from '@/app/store/examStore'
 import { EditorWorkspace } from '@/components/layout/EditorWorkspace'
@@ -78,57 +72,53 @@ const exportModeFileSegment = (mode: ExportMode) => {
 }
 
 function App() {
-  const project = useExamStore((state) => state.project)
-  const screen = useExamStore((state) => state.screen)
-  const isDirty = useExamStore(selectIsDirty)
-  const lastSavedAt = useExamStore((state) => state.lastSavedAt)
-  const selectedBlockId = useExamStore((state) => state.selectedBlockId)
-  const projectFileName = useExamStore((state) => state.projectFileName)
-  const saveHandle = useExamStore((state) => state.saveHandle)
-  const items = useExamStore(selectCurrentItems)
-  const questionBank = useExamStore(selectQuestionBank)
-  const snippets = useExamStore(selectSnippets)
-  const currentSection = useExamStore(selectCurrentSection)
-  const selectedBlock = useExamStore(selectSelectedBlock)
-
-  const setScreen = useExamStore((state) => state.setScreen)
-  const startNewProject = useExamStore((state) => state.startNewProject)
-  const startShaqlawaLinuxGuiProject = useExamStore(
-    (state) => state.startShaqlawaLinuxGuiProject,
-  )
-  const openProject = useExamStore((state) => state.openProject)
-  const addTemplateField = useExamStore((state) => state.addTemplateField)
-  const updateTemplateField = useExamStore((state) => state.updateTemplateField)
-  const removeTemplateField = useExamStore((state) => state.removeTemplateField)
-  const replaceTemplateFields = useExamStore((state) => state.replaceTemplateFields)
-  const applyTemplatePreset = useExamStore((state) => state.applyTemplatePreset)
-  const addSection = useExamStore((state) => state.addSection)
-  const updateSection = useExamStore((state) => state.updateSection)
-  const selectSection = useExamStore((state) => state.selectSection)
-  const duplicateSection = useExamStore((state) => state.duplicateSection)
-  const deleteSection = useExamStore((state) => state.deleteSection)
-  const setTargetTotalMarks = useExamStore((state) => state.setTargetTotalMarks)
-  const setNumberingMode = useExamStore((state) => state.setNumberingMode)
-  const saveBlockToBank = useExamStore((state) => state.saveBlockToBank)
-  const insertFromBank = useExamStore((state) => state.insertFromBank)
-  const saveSnippet = useExamStore((state) => state.saveSnippet)
-  const applySnippetToSectionInstructions = useExamStore(
-    (state) => state.applySnippetToSectionInstructions,
-  )
-  const applySnippetToBlockPrompt = useExamStore((state) => state.applySnippetToBlockPrompt)
-  const applySnippetToTemplateField = useExamStore((state) => state.applySnippetToTemplateField)
-  const addBlock = useExamStore((state) => state.addBlock)
-  const addImageBlock = useExamStore((state) => state.addImageBlock)
-  const updateBlock = useExamStore((state) => state.updateBlock)
-  const moveBlockByDirection = useExamStore((state) => state.moveBlockByDirection)
-  const moveBlockByIndex = useExamStore((state) => state.moveBlockByIndex)
-  const duplicateBlock = useExamStore((state) => state.duplicateBlock)
-  const deleteBlock = useExamStore((state) => state.deleteBlock)
-  const selectBlock = useExamStore((state) => state.selectBlock)
-  const attachImageAsset = useExamStore((state) => state.attachImageAsset)
-  const setProjectFileName = useExamStore((state) => state.setProjectFileName)
-  const setSaveHandle = useExamStore((state) => state.setSaveHandle)
-  const markProjectPersisted = useExamStore((state) => state.markProjectPersisted)
+  const {
+    project,
+    screen,
+    revision,
+    persistedRevision,
+    lastSavedAt,
+    selectedBlockId,
+    projectFileName,
+    saveHandle,
+    questionBank,
+    snippets,
+    selectedSectionId,
+    setScreen,
+    startNewProject,
+    startShaqlawaLinuxGuiProject,
+    openProject,
+    addTemplateField,
+    updateTemplateField,
+    removeTemplateField,
+    replaceTemplateFields,
+    applyTemplatePreset,
+    addSection,
+    updateSection,
+    selectSection,
+    duplicateSection,
+    deleteSection,
+    setTargetTotalMarks,
+    setNumberingMode,
+    saveBlockToBank,
+    insertFromBank,
+    saveSnippet,
+    applySnippetToSectionInstructions,
+    applySnippetToBlockPrompt,
+    applySnippetToTemplateField,
+    addBlock,
+    addImageBlock,
+    updateBlock,
+    moveBlockByDirection,
+    moveBlockByIndex,
+    duplicateBlock,
+    deleteBlock,
+    selectBlock,
+    attachImageAsset,
+    setProjectFileName,
+    setSaveHandle,
+    markProjectPersisted,
+  } = useExamStore()
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const didAttemptDraftRestore = useRef(false)
@@ -144,6 +134,7 @@ function App() {
   const [draftAutosaveSource, setDraftAutosaveSource] = useState<'local' | 'indexeddb' | 'local-slim'>('local')
 
   const canRenderEditor = useMemo(() => screen === 'editor', [screen])
+  const isDirty = revision !== persistedRevision
   const autosaveTarget = useMemo(() => {
     if (saveHandle) {
       return 'file' as const
@@ -159,6 +150,15 @@ function App() {
   const sectionTotals = useMemo(() => computeSectionMarks(project), [project])
   const paperTotalMarks = useMemo(() => computePaperMarks(project), [project])
   const validationWarnings = useMemo(() => buildExamWarnings(project), [project])
+  const currentSection = useMemo(
+    () => project.sections.find((section) => section.id === selectedSectionId) ?? project.sections[0],
+    [project.sections, selectedSectionId],
+  )
+  const items = currentSection?.items ?? []
+  const selectedBlock = useMemo(
+    () => items.find((item) => item.id === selectedBlockId) ?? null,
+    [items, selectedBlockId],
+  )
 
   const sectionsForSidebar = useMemo(
     () =>

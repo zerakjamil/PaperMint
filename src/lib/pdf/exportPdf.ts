@@ -112,14 +112,21 @@ const drawTemplateImage = async (
   context.y += fitted.height + 6
 }
 
-const drawShaqlawaCoverPage = async (pdf: jsPDF, fields: ExamProject['templateFields']) => {
+const drawShaqlawaCoverPageImage = async (pdf: jsPDF, fields: ExamProject['templateFields']) => {
+  const coverImageField = findField(fields, 'Cover Page Image')
+
+  if (coverImageField?.value) {
+    const imageSource = await resolveImageDataUrl(coverImageField.value)
+    const format = getImageTypeFromDataUrl(imageSource) === 'jpg' ? 'JPEG' : 'PNG'
+    pdf.addImage(imageSource, format, 0, 0, pageWidth, pageHeight)
+    return
+  }
+
   const topStripLeft = textValue(findField(fields, 'Top Strip Left'))
   const topStripRight = textValue(findField(fields, 'Top Strip Right'))
   const logoField = findField(fields, 'Institution Logo')
 
-  pdf.addPage('a4', 'portrait')
   pdf.setFont('times', 'normal')
-
   pdf.setDrawColor(100)
   pdf.setLineWidth(0.6)
 
@@ -392,16 +399,13 @@ export const buildExamPdfDocument = async (
     drawWrapped({ context, text: 'ANSWER KEY', lineHeight: 7 })
   }
 
-  if (isShaqlawaCover) {
-    await drawShaqlawaCoverPage(pdf, project.templateFields)
+  if (coverImageField?.value) {
+    const imageSource = await resolveImageDataUrl(coverImageField.value)
+    const format = getImageTypeFromDataUrl(imageSource) === 'jpg' ? 'JPEG' : 'PNG'
+    pdf.addImage(imageSource, format, 0, 0, pageWidth, pageHeight)
     startNewPage(context)
-  } else if (coverImageField?.value) {
-    await drawTemplateImage(
-      context,
-      coverImageField.value,
-      contentWidth,
-      contentBottom - margin,
-    )
+  } else if (isShaqlawaCover) {
+    await drawShaqlawaCoverPageImage(pdf, project.templateFields)
     startNewPage(context)
   }
 

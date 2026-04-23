@@ -139,16 +139,78 @@ const findField = (fields: TemplateField[], label: string) =>
 
 const textValue = (field?: TemplateField) => field?.value ?? ''
 
+const fieldText = (fields: TemplateField[], label: string) => textValue(findField(fields, label)).trim()
+
+const extractLegacyValue = (line?: string) => {
+  if (!line) return ''
+  const parts = line.split('/')
+  if (parts.length <= 1) {
+    return line.trim()
+  }
+  return parts.slice(1).join('/').trim()
+}
+
+const getShaqlawaMetadata = (fields: TemplateField[]) => {
+  const legacyCourseLines = fieldText(fields, 'Course Metadata')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+  const legacySessionLines = fieldText(fields, 'Session Banner')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  const subject = fieldText(fields, 'Subject') || extractLegacyValue(legacyCourseLines[0])
+  const department = fieldText(fields, 'Department') || extractLegacyValue(legacyCourseLines[1])
+  const stage = fieldText(fields, 'Stage') || extractLegacyValue(legacyCourseLines[2])
+  const duration = fieldText(fields, 'Duration') || extractLegacyValue(legacyCourseLines[3])
+  const academicYear = fieldText(fields, 'Academic Year') || legacySessionLines[1] || ''
+  const round = fieldText(fields, 'Round') || legacySessionLines[2] || ''
+  const sessionTitle = legacySessionLines[0] || 'تاقی كردنهوهكانی كۆتایــــی ساڵ'
+
+  const topStripLeft =
+    fieldText(fields, 'Top Strip Left') ||
+    `بابەت/ ${subject || '-'} / قۆناغ / ${[stage, department].filter(Boolean).join(' ')}`
+  const topStripRight = fieldText(fields, 'Top Strip Right') || 'سیریال قوتابی //'
+
+  const hasIndividualCourseFields =
+    !!findField(fields, 'Subject') ||
+    !!findField(fields, 'Department') ||
+    !!findField(fields, 'Stage') ||
+    !!findField(fields, 'Duration')
+
+  const courseMetadata = hasIndividualCourseFields
+    ? [
+        `بابەت/ ${subject || '-'}`,
+        `بەشی / ${department || '-'}`,
+        `قۆناغ/ ${stage || '-'}`,
+        `كات/ ${duration || '-'}`,
+      ].join('\n')
+    : fieldText(fields, 'Course Metadata')
+
+  const sessionBanner = [sessionTitle, academicYear, round].filter(Boolean).join('\n')
+
+  return {
+    topStripLeft,
+    topStripRight,
+    courseMetadata,
+    sessionBanner,
+    footerBlessing: fieldText(fields, 'Footer Blessing'),
+    lecturerSignature: fieldText(fields, 'Lecturer Signature'),
+  }
+}
+
 const ShaqlawaCoverPage = ({ fields }: { fields: TemplateField[] }) => {
   const logo = findField(fields, 'Institution Logo')
+  const metadata = getShaqlawaMetadata(fields)
 
   return (
     <div className="relative w-full border border-slate-300" style={{ aspectRatio: '612 / 792' }}>
       <div className="absolute inset-0 bg-white p-6 text-slate-900" dir="rtl">
         <div className="border-2 border-sky-500 px-3 py-1 text-[11px] leading-5">
           <div className="flex items-center justify-between">
-            <span>{textValue(findField(fields, 'Top Strip Left'))}</span>
-            <span>{textValue(findField(fields, 'Top Strip Right'))}</span>
+            <span>{metadata.topStripLeft}</span>
+            <span>{metadata.topStripRight}</span>
           </div>
         </div>
 
@@ -165,7 +227,7 @@ const ShaqlawaCoverPage = ({ fields }: { fields: TemplateField[] }) => {
               <img src={logo.value} alt="Institution Logo" className="h-20 w-20 object-contain" />
             ) : null}
             <div className="whitespace-pre-line text-[24px] font-semibold leading-10">
-              {textValue(findField(fields, 'Session Banner'))}
+              {metadata.sessionBanner}
             </div>
           </div>
 
@@ -179,7 +241,7 @@ const ShaqlawaCoverPage = ({ fields }: { fields: TemplateField[] }) => {
               </div>
             </div>
             <div className="border-2 border-sky-500 p-2 text-right text-[30px] leading-10 whitespace-pre-line">
-              {textValue(findField(fields, 'Course Metadata'))}
+              {metadata.courseMetadata}
             </div>
           </div>
         </div>
@@ -227,8 +289,8 @@ const ShaqlawaCoverPage = ({ fields }: { fields: TemplateField[] }) => {
         </div>
 
         <div className="mt-2 flex items-center justify-between border-2 border-sky-500 px-3 py-2 text-[18px]">
-          <span className="whitespace-pre-line text-right">{textValue(findField(fields, 'Lecturer Signature'))}</span>
-          <span className="font-semibold">{textValue(findField(fields, 'Footer Blessing'))}</span>
+          <span className="whitespace-pre-line text-right">{metadata.lecturerSignature}</span>
+          <span className="font-semibold">{metadata.footerBlessing}</span>
         </div>
       </div>
     </div>
@@ -267,9 +329,17 @@ export const PaperPreview = ({
   )
 
   const positioned = items.map((block, index) => ({ block, index }))
+  const coverImageField = templateFields.find(
+    (field) =>
+      field.section === 'header' &&
+      field.label === 'Cover Page Image' &&
+      isImageTemplateValue(field.value),
+  )
   const hasShaqlawaCover = templatePresetId === 'shaqlawa_linux_gui'
+  const shaqlawaMetadata = hasShaqlawaCover ? getShaqlawaMetadata(templateFields) : null
   const questionPages = paginate(positioned)
-  const pages = hasShaqlawaCover ? ([[] as PositionedItem[], ...questionPages]) : questionPages
+  const hasCoverPage = Boolean(coverImageField) || hasShaqlawaCover
+  const pages = hasCoverPage ? ([[] as PositionedItem[], ...questionPages]) : questionPages
   const headerFields = templateFields.filter(
     (field) => field.section === 'header' && field.label !== 'Cover Page Image',
   )
@@ -348,8 +418,8 @@ export const PaperPreview = ({
           <SortableContext items={items.map((item) => item.id)} strategy={verticalListSortingStrategy}>
             {pages.map((pageItems, pageIndex) => (
               (() => {
-                const isCoverPage = hasShaqlawaCover && pageIndex === 0
-                const questionPageIndex = hasShaqlawaCover ? pageIndex - 1 : pageIndex
+                const isCoverPage = hasCoverPage && pageIndex === 0
+                const questionPageIndex = hasCoverPage ? pageIndex - 1 : pageIndex
                 const isFirstQuestionPage = questionPageIndex === 0
 
                 return (
@@ -357,11 +427,33 @@ export const PaperPreview = ({
                 key={`page-${pageIndex}`}
                 className="paper-page mx-auto"
               >
-                {isCoverPage ? (
+                {isCoverPage && coverImageField ? (
+                  <div className="space-y-2">
+                    <img
+                      src={coverImageField.value}
+                      alt={coverImageField.label || 'Cover page image'}
+                      className="w-full rounded-sm border border-slate-200 object-contain"
+                    />
+                  </div>
+                ) : null}
+
+                {isCoverPage && !coverImageField && hasShaqlawaCover ? (
                   <ShaqlawaCoverPage fields={templateFields} />
                 ) : null}
 
-                {!isCoverPage && isFirstQuestionPage ? (
+                {isCoverPage ? (
+                  <InsertButton onClick={() => onRequestInsert(0)} />
+                ) : null}
+
+                {!isCoverPage && (hasShaqlawaCover || isFirstQuestionPage) ? (
+                  hasShaqlawaCover ? (
+                    <header className="mb-6 border-2 border-sky-500 px-3 py-1 text-[11px] leading-5" dir="rtl">
+                      <div className="flex items-center justify-between">
+                        <span>{shaqlawaMetadata?.topStripLeft}</span>
+                        <span>{shaqlawaMetadata?.topStripRight}</span>
+                      </div>
+                    </header>
+                  ) : (
                   <header className="rounded-md border border-slate-300 p-3 mb-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-center sm:text-left">
                       {headerFields.map((field) =>
@@ -380,6 +472,7 @@ export const PaperPreview = ({
                       )}
                     </div>
                   </header>
+                  )
                 ) : null}
 
                 {!isCoverPage ? (
@@ -425,27 +518,37 @@ export const PaperPreview = ({
                   </div>
                 ) : null}
 
-                <footer className="mt-6 border-t border-slate-300 pt-2 text-[11px] text-slate-600">
-                  <div className="flex flex-wrap justify-between gap-4">
-                    {footerFields.map((field) =>
-                      isImageTemplateValue(field.value) ? (
-                        <div key={field.id} className="flex items-center gap-2">
-                          <img
-                            src={field.value}
-                            alt={field.label || 'Footer image'}
-                            className="max-h-12 w-auto max-w-[140px] object-contain"
-                          />
-                          {field.label ? <span className="text-[11px] text-slate-500">{field.label}</span> : null}
-                        </div>
-                      ) : (
-                        <span key={field.id} className="whitespace-pre-line">
-                          <span className="font-semibold">{field.label}:</span> {field.value}
-                        </span>
-                      ),
-                    )}
-                  </div>
-                  <div className="text-center mt-2">Page {pageIndex + 1}</div>
-                </footer>
+                {hasShaqlawaCover && !isCoverPage ? (
+                  <footer className="mt-6 space-y-2 text-[11px] text-slate-700" dir="rtl">
+                    <div className="flex items-center justify-between border-2 border-sky-500 px-3 py-2 text-[15px]">
+                      <span className="whitespace-pre-line text-right">{shaqlawaMetadata?.lecturerSignature}</span>
+                      <span className="font-semibold">{shaqlawaMetadata?.footerBlessing}</span>
+                    </div>
+                    <div className="text-right text-[10px] text-slate-500">Page {pageIndex + 1}</div>
+                  </footer>
+                ) : !isCoverPage ? (
+                  <footer className="mt-6 border-t border-slate-300 pt-2 text-[11px] text-slate-600">
+                    <div className="flex flex-wrap justify-between gap-4">
+                      {footerFields.map((field) =>
+                        isImageTemplateValue(field.value) ? (
+                          <div key={field.id} className="flex items-center gap-2">
+                            <img
+                              src={field.value}
+                              alt={field.label || 'Footer image'}
+                              className="max-h-12 w-auto max-w-[140px] object-contain"
+                            />
+                            {field.label ? <span className="text-[11px] text-slate-500">{field.label}</span> : null}
+                          </div>
+                        ) : (
+                          <span key={field.id} className="whitespace-pre-line">
+                            <span className="font-semibold">{field.label}:</span> {field.value}
+                          </span>
+                        ),
+                      )}
+                    </div>
+                    <div className="text-center mt-2">Page {pageIndex + 1}</div>
+                  </footer>
+                ) : null}
               </article>
                 )
               })()

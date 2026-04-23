@@ -512,13 +512,13 @@ export const LeftSidebar = ({
 
           <div className="mt-2 space-y-2 rounded-md border border-amber-200 bg-amber-50/50 p-2">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">
-              Auto-Extract via OCR Scan
+              Auto-Trace Template
             </p>
             <p className="text-[11px] text-amber-600">
-              Upload a scanned exam. We will auto-detect the header/footer zones, extract text, and auto-place the logo.
+              Upload a template page to preserve exact layout as an editable cover image, then tune fields/logo manually.
             </p>
             <label className={`block cursor-pointer rounded-md border border-amber-300 bg-white px-2 py-1.5 text-center text-xs font-medium text-amber-700 hover:bg-amber-50 ${isScanning ? 'opacity-50 pointer-events-none' : ''}`}>
-              {isScanning ? `Scanning... ${scannerProgress}%` : 'Upload Scanned Paper Image'}
+              {isScanning ? `Tracing... ${scannerProgress}%` : 'Upload Template Page'}
               <input
                 type="file"
                 accept="image/*"
@@ -532,7 +532,7 @@ export const LeftSidebar = ({
                   try {
                     setIsScanning(true)
                     setScannerProgress(0)
-                    setTemplateLibraryStatus('Initiating OCR scan...')
+                    setTemplateLibraryStatus('Initiating template trace...')
                     const reader = new FileReader()
                     const dataUrl = await new Promise<string>((resolve, reject) => {
                       reader.onload = () => resolve(reader.result as string)
@@ -546,9 +546,9 @@ export const LeftSidebar = ({
                     })
                     
                     onReplaceTemplateFields(fields)
-                    setTemplateLibraryStatus('Scanned template applied.')
+                    setTemplateLibraryStatus('Template trace applied.')
                   } catch (err) {
-                    setTemplateLibraryStatus('Scan failed: ' + (err as Error).message)
+                    setTemplateLibraryStatus('Template trace failed: ' + (err as Error).message)
                   } finally {
                     setIsScanning(false)
                   }
