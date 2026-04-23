@@ -2,20 +2,28 @@ import { create } from 'zustand'
 
 import { createBlock } from '@/features/questions/blockFactory'
 import { createDefaultProject } from '@/features/template/defaultTemplate'
+import { applyTemplatePreset } from '@/features/template/templateLibrary'
 import type { SaveHandle } from '@/lib/file-system/projectFile'
 import { newId } from '@/lib/utils/id'
 import type {
   BlockType,
   ExamProject,
+  NumberingMode,
+  QuestionBankEntry,
   QuestionBlock,
   QuestionBlock as QuestionBlockType,
+  SnippetEntry,
+  SnippetKind,
   TemplateField,
+  TemplatePresetId,
 } from '@/types/exam'
 
 type Screen = 'home' | 'editor'
 
 type ExamStoreState = {
   project: ExamProject
+  questionBank: QuestionBankEntry[]
+  snippets: SnippetEntry[]
   selectedSectionId: string
   selectedBlockId: string | null
   screen: Screen
@@ -35,6 +43,32 @@ type ExamStoreState = {
     >,
   ) => void
   removeTemplateField: (id: string) => void
+  replaceTemplateFields: (
+    templateFields: TemplateField[],
+    templatePresetId?: TemplatePresetId,
+  ) => void
+  applyTemplatePreset: (presetId: TemplatePresetId) => void
+  addSection: () => void
+  updateSection: (
+    sectionId: string,
+    updates: Partial<Pick<ExamProject['sections'][number], 'title' | 'instructions'>>,
+  ) => void
+  selectSection: (sectionId: string) => void
+  duplicateSection: (sectionId: string) => void
+  deleteSection: (sectionId: string) => void
+  setTargetTotalMarks: (targetTotalMarks: number | undefined) => void
+  setNumberingMode: (mode: NumberingMode) => void
+  saveBlockToBank: (blockId: string, tags?: string[]) => string | null
+  insertFromBank: (entryId: string, insertionIndex: number) => void
+  saveSnippet: (payload: {
+    kind: SnippetKind
+    title: string
+    content: string
+    tags?: string[]
+  }) => string
+  applySnippetToSectionInstructions: (snippetId: string, sectionId: string) => void
+  applySnippetToBlockPrompt: (snippetId: string, blockId: string) => void
+  applySnippetToTemplateField: (snippetId: string, fieldId: string) => void
   addBlock: (type: BlockType, insertionIndex: number) => void
   addImageBlock: (dataUrl: string, insertionIndex: number) => void
   updateBlock: (
@@ -59,11 +93,45 @@ const touch = (project: ExamProject): ExamProject => ({
 
 const defaultProject = createDefaultProject()
 
+const withProjectDefaults = (project: ExamProject): ExamProject => ({
+  ...project,
+  projectVersion: project.projectVersion ?? 1,
+  versionHistory: project.versionHistory ?? [],
+  settings: {
+    templatePresetId: project.settings?.templatePresetId,
+    targetTotalMarks: project.settings?.targetTotalMarks ?? 100,
+    numberingMode: project.settings?.numberingMode ?? 'global',
+  },
+})
+
 const moveItem = <T,>(items: T[], fromIndex: number, toIndex: number) => {
   const cloned = [...items]
   const [moved] = cloned.splice(fromIndex, 1)
   cloned.splice(toIndex, 0, moved)
   return cloned
+}
+
+const cloneBlockWithNewId = (block: QuestionBlock): QuestionBlock => ({
+  ...block,
+  id: newId(),
+})
+
+const findBlock = (project: ExamProject, blockId: string) => {
+  for (const section of project.sections) {
+    const block = section.items.find((item) => item.id === blockId)
+    if (block) {
+      return block
+    }
+  }
+  return null
+}
+
+const appendSnippetContent = (existing: string | undefined, snippetContent: string) => {
+  const trimmed = (existing ?? '').trim()
+  if (!trimmed) {
+    return snippetContent
+  }
+  return `${trimmed}\n${snippetContent}`
 }
 
 const getSectionItems = (project: ExamProject, sectionId: string) => {
@@ -73,6 +141,8 @@ const getSectionItems = (project: ExamProject, sectionId: string) => {
 
 export const useExamStore = create<ExamStoreState>((set, get) => ({
   project: defaultProject,
+  questionBank: [],
+  snippets: [],
   selectedSectionId: defaultProject.sections[0]?.id ?? '',
   selectedBlockId: defaultProject.sections[0]?.items[0]?.id ?? null,
   screen: 'home',
@@ -99,10 +169,12 @@ export const useExamStore = create<ExamStoreState>((set, get) => ({
     })
   },
   openProject: (project, fileName) => {
+    const nextProject = withProjectDefaults(project)
+
     set({
-      project,
-      selectedSectionId: project.sections[0]?.id ?? '',
-      selectedBlockId: project.sections[0]?.items[0]?.id ?? null,
+      project: nextProject,
+      selectedSectionId: nextProject.sections[0]?.id ?? '',
+      selectedBlockId: nextProject.sections[0]?.items[0]?.id ?? null,
       projectFileName: fileName ?? 'exam-project.exam.json',
       screen: 'editor',
       revision: 0,
@@ -131,8 +203,22 @@ export const useExamStore = create<ExamStoreState>((set, get) => ({
           f.id === id
             ? {
                 ...f,
-                ...updates,
-                style: updates.style ? { ...f.style, ...updates.style } : f.style,
+                ...(f.locked
+                  ? {}
+                  : {
+                      ...(updates.label !== undefined
+                        ? { label: updates.label }
+                        : {}),
+                      ...(updates.value !== undefined
+                        ? { value: updates.value }
+                        : {}),
+                    }),
+                ...(!f.formatLocked && updates.displayMode !== undefined
+                  ? { displayMode: updates.displayMode }
+                  : {}),
+                ...(!f.formatLocked && updates.style
+                  ? { style: { ...f.style, ...updates.style } }
+                  : {}),
               }
             : f
         ),
@@ -145,10 +231,302 @@ export const useExamStore = create<ExamStoreState>((set, get) => ({
     set((state) => ({
       project: touch({
         ...state.project,
-        templateFields: state.project.templateFields.filter((f) => f.id !== id),
+        templateFields: state.project.templateFields.filter(
+          (f) => f.id !== id || Boolean(f.locked),
+        ),
       }),
       revision: state.revision + 1,
     }))
+  },
+  replaceTemplateFields: (templateFields, templatePresetId) => {
+    set((state) => ({
+      project: touch({
+        ...state.project,
+        templateFields,
+        settings: {
+          ...state.project.settings,
+          templatePresetId:
+            templatePresetId ?? state.project.settings?.templatePresetId,
+        },
+      }),
+      revision: state.revision + 1,
+    }))
+  },
+  applyTemplatePreset: (presetId) => {
+    set((state) => ({
+      project: touch(applyTemplatePreset(state.project, presetId)),
+      revision: state.revision + 1,
+    }))
+  },
+  addSection: () => {
+    set((state) => {
+      const newSection = {
+        id: newId(),
+        title: `Section ${String.fromCharCode(65 + state.project.sections.length)}`,
+        instructions: 'Answer all questions in this section.',
+        items: [createBlock('essay')],
+      }
+
+      return {
+        project: touch({
+          ...state.project,
+          sections: [...state.project.sections, newSection],
+        }),
+        selectedSectionId: newSection.id,
+        selectedBlockId: newSection.items[0]?.id ?? null,
+        revision: state.revision + 1,
+      }
+    })
+  },
+  updateSection: (sectionId, updates) => {
+    set((state) => ({
+      project: touch({
+        ...state.project,
+        sections: state.project.sections.map((section) =>
+          section.id === sectionId ? { ...section, ...updates } : section,
+        ),
+      }),
+      revision: state.revision + 1,
+    }))
+  },
+  selectSection: (sectionId) => {
+    set((state) => {
+      const section = state.project.sections.find((item) => item.id === sectionId)
+      return {
+        selectedSectionId: sectionId,
+        selectedBlockId: section?.items[0]?.id ?? null,
+      }
+    })
+  },
+  duplicateSection: (sectionId) => {
+    set((state) => {
+      const index = state.project.sections.findIndex((section) => section.id === sectionId)
+      if (index < 0) {
+        return state
+      }
+
+      const source = state.project.sections[index]
+      const duplicated = {
+        ...source,
+        id: newId(),
+        title: source.title ? `${source.title} (Copy)` : 'Section Copy',
+        items: source.items.map((item) => ({ ...item, id: newId() })),
+      }
+
+      const sections = [...state.project.sections]
+      sections.splice(index + 1, 0, duplicated)
+
+      return {
+        project: touch({
+          ...state.project,
+          sections,
+        }),
+        selectedSectionId: duplicated.id,
+        selectedBlockId: duplicated.items[0]?.id ?? null,
+        revision: state.revision + 1,
+      }
+    })
+  },
+  deleteSection: (sectionId) => {
+    set((state) => {
+      if (state.project.sections.length <= 1) {
+        return state
+      }
+
+      const sections = state.project.sections.filter((section) => section.id !== sectionId)
+      const fallbackSection = sections[0]
+
+      return {
+        project: touch({
+          ...state.project,
+          sections,
+        }),
+        selectedSectionId:
+          state.selectedSectionId === sectionId
+            ? fallbackSection?.id ?? ''
+            : state.selectedSectionId,
+        selectedBlockId:
+          state.selectedSectionId === sectionId
+            ? fallbackSection?.items[0]?.id ?? null
+            : state.selectedBlockId,
+        revision: state.revision + 1,
+      }
+    })
+  },
+  setTargetTotalMarks: (targetTotalMarks) => {
+    set((state) => ({
+      project: touch({
+        ...state.project,
+        settings: {
+          ...state.project.settings,
+          targetTotalMarks,
+        },
+      }),
+      revision: state.revision + 1,
+    }))
+  },
+  setNumberingMode: (mode) => {
+    set((state) => ({
+      project: touch({
+        ...state.project,
+        settings: {
+          ...state.project.settings,
+          numberingMode: mode,
+        },
+      }),
+      revision: state.revision + 1,
+    }))
+  },
+  saveBlockToBank: (blockId, tags = []) => {
+    let entryId: string | null = null
+
+    set((state) => {
+      const block = findBlock(state.project, blockId)
+      if (!block) {
+        return state
+      }
+
+      const timestamp = new Date().toISOString()
+      const nextEntry: QuestionBankEntry = {
+        id: newId(),
+        block: { ...block },
+        tags,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        sourceProjectId: state.project.id,
+      }
+
+      entryId = nextEntry.id
+
+      return {
+        questionBank: [nextEntry, ...state.questionBank],
+      }
+    })
+
+    return entryId
+  },
+  insertFromBank: (entryId, insertionIndex) => {
+    set((state) => {
+      const entry = state.questionBank.find((item) => item.id === entryId)
+      if (!entry) {
+        return state
+      }
+
+      const cloned = cloneBlockWithNewId(entry.block)
+      const sections = state.project.sections.map((section) => {
+        if (section.id !== state.selectedSectionId) {
+          return section
+        }
+
+        const safeIndex = Math.max(0, Math.min(section.items.length, insertionIndex))
+        const items = [...section.items]
+        items.splice(safeIndex, 0, cloned)
+
+        return {
+          ...section,
+          items,
+        }
+      })
+
+      return {
+        project: touch({
+          ...state.project,
+          sections,
+        }),
+        selectedBlockId: cloned.id,
+        revision: state.revision + 1,
+      }
+    })
+  },
+  saveSnippet: ({ kind, title, content, tags = [] }) => {
+    const timestamp = new Date().toISOString()
+    const nextSnippet: SnippetEntry = {
+      id: newId(),
+      kind,
+      title,
+      content,
+      tags,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    }
+
+    set((state) => ({
+      snippets: [nextSnippet, ...state.snippets],
+    }))
+
+    return nextSnippet.id
+  },
+  applySnippetToSectionInstructions: (snippetId, sectionId) => {
+    set((state) => {
+      const snippet = state.snippets.find((item) => item.id === snippetId)
+      if (!snippet) {
+        return state
+      }
+
+      return {
+        project: touch({
+          ...state.project,
+          sections: state.project.sections.map((section) =>
+            section.id === sectionId
+              ? {
+                  ...section,
+                  instructions: appendSnippetContent(section.instructions, snippet.content),
+                }
+              : section,
+          ),
+        }),
+        revision: state.revision + 1,
+      }
+    })
+  },
+  applySnippetToBlockPrompt: (snippetId, blockId) => {
+    set((state) => {
+      const snippet = state.snippets.find((item) => item.id === snippetId)
+      if (!snippet) {
+        return state
+      }
+
+      return {
+        project: touch({
+          ...state.project,
+          sections: state.project.sections.map((section) => ({
+            ...section,
+            items: section.items.map((block) =>
+              block.id === blockId
+                ? {
+                    ...block,
+                    prompt: appendSnippetContent(block.prompt, snippet.content),
+                  }
+                : block,
+            ),
+          })),
+        }),
+        revision: state.revision + 1,
+      }
+    })
+  },
+  applySnippetToTemplateField: (snippetId, fieldId) => {
+    set((state) => {
+      const snippet = state.snippets.find((item) => item.id === snippetId)
+      if (!snippet) {
+        return state
+      }
+
+      return {
+        project: touch({
+          ...state.project,
+          templateFields: state.project.templateFields.map((field) =>
+            field.id === fieldId
+              ? {
+                  ...field,
+                  value: appendSnippetContent(field.value, snippet.content),
+                }
+              : field,
+          ),
+        }),
+        revision: state.revision + 1,
+      }
+    })
   },
   addBlock: (type, insertionIndex) => {
     set((state) => {
@@ -412,3 +790,7 @@ export const selectSelectedBlock = (state: ExamStoreState) => {
 
 export const selectIsDirty = (state: ExamStoreState) =>
   state.revision !== state.persistedRevision
+
+export const selectQuestionBank = (state: ExamStoreState) => state.questionBank
+
+export const selectSnippets = (state: ExamStoreState) => state.snippets

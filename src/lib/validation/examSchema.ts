@@ -3,6 +3,8 @@ import { z } from 'zod'
 const baseBlockSchema = z.object({
   id: z.string().min(1),
   marks: z.number().min(0).optional(),
+  instructorOnly: z.boolean().optional(),
+  instructorNotes: z.string().optional(),
 })
 
 const mcqBlockSchema = baseBlockSchema.extend({
@@ -47,15 +49,38 @@ const questionBlockSchema = z.discriminatedUnion('type', [
   imageQuestionSchema,
 ])
 
+const projectVersionEntrySchema = z.object({
+  id: z.string().min(1),
+  versionNumber: z.number().int().positive(),
+  fileName: z.string().optional(),
+  createdAt: z.string(),
+  sourceProjectId: z.string().optional(),
+})
+
 export const examProjectSchema = z.object({
   id: z.string(),
   version: z.number().int().positive(),
+  projectVersion: z.number().int().positive().optional(),
+  baseProjectId: z.string().optional(),
+  sourceProjectId: z.string().optional(),
+  versionHistory: z.array(projectVersionEntrySchema).optional(),
+  settings: z
+    .object({
+      templatePresetId: z
+        .enum(['default_university', 'engineering_midterm', 'medical_final'])
+        .optional(),
+      targetTotalMarks: z.number().min(0).optional(),
+      numberingMode: z.enum(['global', 'per_section']).optional(),
+    })
+    .optional(),
   templateFields: z.array(
     z.object({
       id: z.string(),
       label: z.string(),
       value: z.string(),
       section: z.enum(['header', 'footer']),
+      locked: z.boolean().optional(),
+      formatLocked: z.boolean().optional(),
       displayMode: z.enum(['label_value', 'value_only']).optional(),
       style: z
         .object({

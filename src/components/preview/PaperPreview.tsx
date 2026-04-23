@@ -27,6 +27,9 @@ type Props = {
   items: QuestionBlock[]
   assets: AssetMap
   selectedBlockId: string | null
+  sectionTitle?: string
+  sectionInstructions?: string
+  questionNumberStart?: number
   onSelect: (blockId: string) => void
   onRequestInsert: (index: number) => void
   onPreviewPdf?: () => void
@@ -130,6 +133,9 @@ export const PaperPreview = ({
   items,
   assets,
   selectedBlockId,
+  sectionTitle,
+  sectionInstructions,
+  questionNumberStart = 1,
   onSelect,
   onRequestInsert,
   onPreviewPdf,
@@ -255,12 +261,25 @@ export const PaperPreview = ({
                 ) : null}
 
                 <div className="mt-4">
+                  {pageIndex === 0 && (sectionTitle || sectionInstructions) ? (
+                    <section className="mb-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+                      {sectionTitle ? (
+                        <h3 className="text-sm font-semibold text-slate-900">{sectionTitle}</h3>
+                      ) : null}
+                      {sectionInstructions ? (
+                        <p className="mt-1 whitespace-pre-wrap text-xs text-slate-700">
+                          {sectionInstructions}
+                        </p>
+                      ) : null}
+                    </section>
+                  ) : null}
+
                   {pageItems.map((item) => (
                     <div key={item.block.id}>
                       <InsertButton onClick={() => onRequestInsert(item.index)} />
                       <QuestionCard
                         block={item.block}
-                        index={item.index}
+                        index={questionNumberStart + item.index - 1}
                         selected={item.block.id === selectedBlockId}
                         imagePath={
                           item.block.type === 'image_question'
@@ -315,7 +334,7 @@ export const PaperPreview = ({
               <div className="opacity-80 shadow-2xl scale-105 transition-transform">
                 <QuestionCard
                   block={activeItem}
-                  index={activeIndex}
+                  index={questionNumberStart + activeIndex - 1}
                   selected={activeItem.id === selectedBlockId}
                   imagePath={
                     activeItem.type === 'image_question'

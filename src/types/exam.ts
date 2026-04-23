@@ -5,6 +5,20 @@ export type BlockType =
   | 'essay'
   | 'image_question'
 
+export type NumberingMode = 'global' | 'per_section'
+export type ExportMode = 'student' | 'instructor' | 'answer_key'
+
+export type TemplatePresetId =
+  | 'default_university'
+  | 'engineering_midterm'
+  | 'medical_final'
+
+export type ExamSettings = {
+  templatePresetId?: TemplatePresetId
+  targetTotalMarks?: number
+  numberingMode?: NumberingMode
+}
+
 export type AssetMap = Record<
   string,
   {
@@ -19,6 +33,11 @@ export type AssetMap = Record<
 export type ExamProject = {
   id: string
   version: number
+  projectVersion?: number
+  baseProjectId?: string
+  sourceProjectId?: string
+  versionHistory?: ProjectVersionEntry[]
+  settings?: ExamSettings
   templateFields: TemplateField[]
   sections: ExamSection[]
   assets: AssetMap
@@ -38,6 +57,8 @@ export type BaseBlock = {
   id: string
   type: BlockType
   marks?: number
+  instructorOnly?: boolean
+  instructorNotes?: string
 }
 
 export type MCQBlock = BaseBlock & {
@@ -98,6 +119,51 @@ export type TemplateField = {
   label: string
   value: string
   section: 'header' | 'footer'
+  locked?: boolean
+  formatLocked?: boolean
   displayMode?: TemplateFieldDisplayMode
   style?: TemplateFieldStyle
+}
+
+export type QuestionDifficulty = 'easy' | 'medium' | 'hard'
+
+export type QuestionBankEntry = {
+  id: string
+  block: QuestionBlock
+  tags: string[]
+  course?: string
+  subject?: string
+  chapter?: string
+  difficulty?: QuestionDifficulty
+  createdAt: string
+  updatedAt: string
+  sourceProjectId?: string
+}
+
+export type SnippetKind = 'instruction' | 'header' | 'footer' | 'note'
+
+export type SnippetEntry = {
+  id: string
+  kind: SnippetKind
+  title: string
+  content: string
+  tags: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+export type ProjectVersionEntry = {
+  id: string
+  versionNumber: number
+  fileName?: string
+  createdAt: string
+  sourceProjectId?: string
+}
+
+export type ImportConflict = {
+  id: string
+  kind: 'template_field' | 'section' | 'block' | 'asset'
+  targetId: string
+  incomingId: string
+  message: string
 }

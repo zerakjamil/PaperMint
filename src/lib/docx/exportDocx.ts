@@ -14,8 +14,14 @@ import {
   getImageDimensionsFromDataUrl,
   getImageTypeFromDataUrl,
 } from '@/lib/utils/exportLayout'
+import {
+  getBlockAnswerText,
+  getBlockInstructorNotes,
+  shouldRenderBlockForMode,
+} from '@/lib/export/exportMode'
 import type {
   ExamProject,
+  ExportMode,
   TemplateField,
   ImageQuestionBlock,
   QuestionBlock,
@@ -154,6 +160,7 @@ const questionParagraphs = async (
   index: number,
   block: QuestionBlock,
   assets: ExamProject['assets'],
+  mode: ExportMode,
 ) => {
   const header = new Paragraph({
     spacing: { before: 160, after: 80 },
@@ -185,9 +192,9 @@ const questionParagraphs = async (
       new Paragraph({
         children: [
           new TextRun(
-            `Answer: ${
-              block.answer === undefined ? '________' : block.answer ? 'True' : 'False'
-            }`,
+            mode === 'student'
+              ? 'Answer: ________'
+              : getBlockAnswerText(block) ?? 'Answer: ________',
           ),
         ],
       }),
@@ -197,7 +204,14 @@ const questionParagraphs = async (
   if (block.type === 'fill_blank') {
     children.push(
       new Paragraph({
-        children: [new TextRun('Answer space: _____________________________')],
+        children: [
+          new TextRun(
+            mode === 'student'
+              ? 'Answer space: _____________________________'
+              : getBlockAnswerText(block) ??
+                  'Answer space: _____________________________',
+          ),
+        ],
       }),
     )
   }
@@ -267,6 +281,28 @@ const questionParagraphs = async (
     }
   }
 
+  if (mode !== 'student') {
+    const answerText = getBlockAnswerText(block)
+    if (answerText && block.type === 'mcq') {
+      children.push(
+        new Paragraph({
+          children: [new TextRun({ text: answerText, bold: true })],
+          spacing: { before: 60, after: 60 },
+        }),
+      )
+    }
+
+    const notes = getBlockInstructorNotes(block)
+    if (notes) {
+      children.push(
+        new Paragraph({
+          children: [new TextRun(`Instructor notes: ${notes}`)],
+          spacing: { after: 60 },
+        }),
+      )
+    }
+  }
+
   children.push(
     new Paragraph({
       spacing: { after: 120 },
@@ -277,7 +313,10 @@ const questionParagraphs = async (
   return children
 }
 
-export const buildExamDocx = async (project: ExamProject) => {
+export const buildExamDocx = async (
+  project: ExamProject,
+  mode: ExportMode = 'student',
+) => {
   const headerFields = project.templateFields ? project.templateFields.filter(f => f.section === 'header') : []
   const footerFields = project.templateFields ? project.templateFields.filter(f => f.section === 'footer') : []
 
@@ -303,12 +342,27 @@ export const buildExamDocx = async (project: ExamProject) => {
       }),
   ]
 
-  const questionBlocks = project.sections.flatMap((section) => section.items)
-  const questionParagraphCollection = await Promise.all(
-    questionBlocks.map((block, index) =>
-      questionParagraphs(index + 1, block, project.assets),
-    ),
-  )
+  const questionParagraphCollection: Paragraph[][] = []
+  const numberingMode = project.settings?.numberingMode ?? 'global'
+  let questionIndex = 1
+
+  for (const section of project.sections) {
+    if (numberingMode === 'per_section') {
+      questionIndex = 1
+    }
+
+    for (const block of section.items) {
+      if (!shouldRenderBlockForMode(block, mode)) {
+        continue
+      }
+
+      // eslint-disable-next-line no-await-in-loop
+      questionParagraphCollection.push(
+        await questionParagraphs(questionIndex, block, project.assets, mode),
+      )
+      questionIndex += 1
+    }
+  }
 
   const questionParagraphsFlat = questionParagraphCollection.flat()
   const bodyParagraphs =
@@ -349,6 +403,24 @@ export const buildExamDocx = async (project: ExamProject) => {
           },
         },
         children: [
+          ...(mode === 'instructor'
+            ? [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [new TextRun({ text: 'INSTRUCTOR COPY', bold: true })],
+                  spacing: { after: 60 },
+                }),
+              ]
+            : []),
+          ...(mode === 'answer_key'
+            ? [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [new TextRun({ text: 'ANSWER KEY', bold: true })],
+                  spacing: { after: 60 },
+                }),
+              ]
+            : []),
           ...introParagraphs,
           new Paragraph({
             heading: HeadingLevel.HEADING_1,
@@ -372,7 +444,11 @@ export const buildExamDocx = async (project: ExamProject) => {
   return Packer.toBlob(doc)
 }
 
-export const exportExamDocx = async (project: ExamProject, fileName: string) => {
-  const blob = await buildExamDocx(project)
+export const exportExamDocx = async (
+  project: ExamProject,
+  fileName: string,
+  mode: ExportMode = 'student',
+) => {
+  const blob = await buildExamDocx(project, mode)
   downloadBlob(blob, fileName)
 }

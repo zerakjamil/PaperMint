@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/Button'
+import type { ExportMode } from '@/types/exam'
 
 type Props = {
   onNew: () => void
@@ -7,6 +8,8 @@ type Props = {
   onSaveAs: () => void
   onExportPdf: () => void
   onExportDocx: () => void
+  exportMode: ExportMode
+  onExportModeChange: (mode: ExportMode) => void
   isBusy?: boolean
   isDirty: boolean
   lastSavedAt: string | null
@@ -33,6 +36,8 @@ export const TopBar = ({
   onSaveAs,
   onExportPdf,
   onExportDocx,
+  exportMode,
+  onExportModeChange,
   isBusy,
   isDirty,
   lastSavedAt,
@@ -61,6 +66,19 @@ export const TopBar = ({
     </div>
 
     <div className="flex flex-wrap items-center justify-end gap-2">
+      <label className="flex items-center gap-2 rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600">
+        Copy
+        <select
+          value={exportMode}
+          onChange={(event) => onExportModeChange(event.target.value as ExportMode)}
+          className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+          disabled={isBusy}
+        >
+          <option value="student">Student</option>
+          <option value="instructor">Instructor</option>
+          <option value="answer_key">Answer key</option>
+        </select>
+      </label>
       <Button variant="secondary" onClick={onNew} disabled={isBusy}>
         New
       </Button>

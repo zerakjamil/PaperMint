@@ -85,6 +85,33 @@ export const RightPropertiesPanel = ({
               className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-slate-500"
             />
           </label>
+
+          <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <input
+              type="checkbox"
+              checked={Boolean(block.instructorOnly)}
+              onChange={(event) =>
+                onUpdate(block.id, (value) => ({
+                  ...value,
+                  instructorOnly: event.target.checked,
+                }))
+              }
+            />
+            Instructor-only question
+          </label>
+
+          <InputField
+            label="Instructor Notes"
+            value={block.instructorNotes ?? ''}
+            textarea
+            rows={3}
+            onChange={(event) =>
+              onUpdate(block.id, (value) => ({
+                ...value,
+                instructorNotes: event.target.value,
+              }))
+            }
+          />
         </div>
       </Panel>
 

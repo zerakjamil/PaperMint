@@ -6,7 +6,12 @@ import {
   getImageDimensionsFromDataUrl,
   getImageTypeFromDataUrl,
 } from '@/lib/utils/exportLayout'
-import type { ExamProject, QuestionBlock } from '@/types/exam'
+import {
+  getBlockAnswerText,
+  getBlockInstructorNotes,
+  shouldRenderBlockForMode,
+} from '@/lib/export/exportMode'
+import type { ExamProject, ExportMode, QuestionBlock } from '@/types/exam'
 
 const margin = 20
 const pageWidth = 210
@@ -128,6 +133,7 @@ const drawQuestion = async (
   block: QuestionBlock,
   index: number,
   assets: ExamProject['assets'],
+  mode: ExportMode,
 ) => {
   ensureSpace(context, 18)
 
@@ -152,7 +158,10 @@ const drawQuestion = async (
   if (block.type === 'true_false') {
     drawWrapped({
       context,
-      text: `Answer: ${block.answer === undefined ? '________' : block.answer ? 'True' : 'False'}`,
+      text:
+        mode === 'student'
+          ? 'Answer: ________'
+          : getBlockAnswerText(block) ?? 'Answer: ________',
       x: margin + 5,
       lineHeight: 6,
     })
@@ -161,7 +170,10 @@ const drawQuestion = async (
   if (block.type === 'fill_blank') {
     drawWrapped({
       context,
-      text: 'Answer space: __________________________________________',
+      text:
+        mode === 'student'
+          ? 'Answer space: __________________________________________'
+          : getBlockAnswerText(block) ?? 'Answer space: __________________________________________',
       x: margin + 5,
       lineHeight: 6,
     })
@@ -216,15 +228,43 @@ const drawQuestion = async (
     }
   }
 
+  if (mode !== 'student') {
+    const answerText = getBlockAnswerText(block)
+    if (answerText && block.type === 'mcq') {
+      drawWrapped({
+        context,
+        text: answerText,
+        x: margin + 5,
+        lineHeight: 6,
+      })
+    }
+
+    const notes = getBlockInstructorNotes(block)
+    if (notes) {
+      drawWrapped({
+        context,
+        text: `Instructor notes: ${notes}`,
+        x: margin + 5,
+        lineHeight: 6,
+      })
+    }
+  }
+
   context.y += 4
 }
 
-export const buildExamPdf = async (project: ExamProject) => {
-  const pdf = await buildExamPdfDocument(project)
+export const buildExamPdf = async (
+  project: ExamProject,
+  mode: ExportMode = 'student',
+) => {
+  const pdf = await buildExamPdfDocument(project, mode)
   return pdf.output('blob')
 }
 
-export const buildExamPdfDocument = async (project: ExamProject) => {
+export const buildExamPdfDocument = async (
+  project: ExamProject,
+  mode: ExportMode = 'student',
+) => {
   const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
   const context = createContext(pdf)
 
@@ -233,6 +273,14 @@ export const buildExamPdfDocument = async (project: ExamProject) => {
 
   pdf.setFont('times', 'bold')
   pdf.setFontSize(15)
+
+  if (mode === 'instructor') {
+    drawWrapped({ context, text: 'INSTRUCTOR COPY', lineHeight: 7 })
+  }
+
+  if (mode === 'answer_key') {
+    drawWrapped({ context, text: 'ANSWER KEY', lineHeight: 7 })
+  }
 
   if (headerFields.length > 0) {
       for (const field of headerFields) {
@@ -257,7 +305,12 @@ export const buildExamPdfDocument = async (project: ExamProject) => {
   pdf.setFontSize(12)
 
   let questionIndex = 1
+  const numberingMode = project.settings?.numberingMode ?? 'global'
   for (const section of project.sections) {
+    if (numberingMode === 'per_section') {
+      questionIndex = 1
+    }
+
     if (section.title) {
       pdf.setFont('times', 'bold')
       drawWrapped({ context, text: section.title, lineHeight: 6 })
@@ -269,7 +322,11 @@ export const buildExamPdfDocument = async (project: ExamProject) => {
     }
 
     for (const block of section.items) {
-      await drawQuestion(context, block, questionIndex, project.assets)
+      if (!shouldRenderBlockForMode(block, mode)) {
+        continue
+      }
+
+      await drawQuestion(context, block, questionIndex, project.assets, mode)
       questionIndex += 1
     }
   }
@@ -311,7 +368,11 @@ export const buildExamPdfDocument = async (project: ExamProject) => {
   return pdf
 }
 
-export const exportExamPdf = async (project: ExamProject, fileName: string) => {
-  const blob = await buildExamPdf(project)
+export const exportExamPdf = async (
+  project: ExamProject,
+  fileName: string,
+  mode: ExportMode = 'student',
+) => {
+  const blob = await buildExamPdf(project, mode)
   downloadBlob(blob, fileName)
 }

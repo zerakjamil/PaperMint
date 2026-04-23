@@ -1,11 +1,13 @@
-import type { BlockType } from '@/types/exam'
+import type { BlockType, QuestionBankEntry } from '@/types/exam'
 import { Button } from '@/components/ui/Button'
 
 type Props = {
   open: boolean
   insertionIndex: number
+  questionBank: QuestionBankEntry[]
   onClose: () => void
   onSelect: (type: BlockType, insertionIndex: number) => void
+  onInsertFromBank: (entryId: string, insertionIndex: number) => void
 }
 
 const options: Array<{ type: BlockType; label: string; description: string }> = [
@@ -39,8 +41,10 @@ const options: Array<{ type: BlockType; label: string; description: string }> = 
 export const InsertQuestionDialog = ({
   open,
   insertionIndex,
+  questionBank,
   onClose,
   onSelect,
+  onInsertFromBank,
 }: Props) => {
   if (!open) {
     return null
@@ -68,6 +72,34 @@ export const InsertQuestionDialog = ({
               <p className="mt-1 text-xs text-slate-600">{option.description}</p>
             </button>
           ))}
+        </div>
+
+        <div className="mt-4 border-t border-slate-200 pt-3">
+          <h3 className="text-sm font-semibold text-slate-900">Saved Questions</h3>
+          {questionBank.length === 0 ? (
+            <p className="mt-1 text-xs text-slate-500">No saved questions yet.</p>
+          ) : (
+            <div className="mt-2 space-y-2">
+              {questionBank.slice(0, 5).map((entry) => (
+                <div
+                  key={entry.id}
+                  className="rounded-md border border-slate-200 p-2"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {entry.block.type.replace('_', ' ')}
+                  </p>
+                  <p className="mt-1 line-clamp-2 text-sm text-slate-800">{entry.block.prompt}</p>
+                  <button
+                    type="button"
+                    onClick={() => onInsertFromBank(entry.id, insertionIndex)}
+                    className="mt-2 rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:border-slate-400"
+                  >
+                    Insert Saved Question
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

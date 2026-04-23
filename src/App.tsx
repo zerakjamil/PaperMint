@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import {
+  selectCurrentSection,
   selectCurrentItems,
   selectIsDirty,
+  selectQuestionBank,
   selectSelectedBlock,
+  selectSnippets,
   useExamStore,
 } from '@/app/store/examStore'
 import { EditorWorkspace } from '@/components/layout/EditorWorkspace'
 import { HomeScreen } from '@/components/layout/HomeScreen'
 import { TopBar } from '@/components/layout/TopBar'
+import { ValidationModal } from '@/components/dialogs/ValidationModal'
 import {
   downloadBlob,
   downloadProject,
@@ -28,6 +32,13 @@ import {
   readAutosaveProjectWithFallback,
   writeAutosaveProjectWithFallback,
 } from '@/features/project/autosaveStorage'
+import {
+  buildExamWarnings,
+  computePaperMarks,
+  computeSectionMarks,
+  type ValidationWarning,
+} from '@/features/validation/examValidation'
+import type { ExportMode } from '@/types/exam'
 
 const saveFileNameForProject = (fileName: string) =>
   fileName.endsWith('.exam.json') ? fileName : `${fileName.replace(/\.json$/i, '')}.exam.json`
@@ -36,6 +47,35 @@ const saveFileNameForImportedDocx = (fileName: string) =>
   saveFileNameForProject(fileName.replace(/\.docx$/i, '.exam.json'))
 
 const AUTOSAVE_DELAY_MS = 1400
+
+type PendingExport = {
+  format: 'pdf' | 'docx'
+  exportMode: ExportMode
+}
+
+const exportModeLabel = (mode: ExportMode) => {
+  if (mode === 'instructor') {
+    return 'instructor copy'
+  }
+
+  if (mode === 'answer_key') {
+    return 'answer key'
+  }
+
+  return 'student copy'
+}
+
+const exportModeFileSegment = (mode: ExportMode) => {
+  if (mode === 'instructor') {
+    return 'instructor'
+  }
+
+  if (mode === 'answer_key') {
+    return 'answer-key'
+  }
+
+  return 'student'
+}
 
 function App() {
   const project = useExamStore((state) => state.project)
@@ -46,6 +86,9 @@ function App() {
   const projectFileName = useExamStore((state) => state.projectFileName)
   const saveHandle = useExamStore((state) => state.saveHandle)
   const items = useExamStore(selectCurrentItems)
+  const questionBank = useExamStore(selectQuestionBank)
+  const snippets = useExamStore(selectSnippets)
+  const currentSection = useExamStore(selectCurrentSection)
   const selectedBlock = useExamStore(selectSelectedBlock)
 
   const setScreen = useExamStore((state) => state.setScreen)
@@ -54,6 +97,23 @@ function App() {
   const addTemplateField = useExamStore((state) => state.addTemplateField)
   const updateTemplateField = useExamStore((state) => state.updateTemplateField)
   const removeTemplateField = useExamStore((state) => state.removeTemplateField)
+  const replaceTemplateFields = useExamStore((state) => state.replaceTemplateFields)
+  const applyTemplatePreset = useExamStore((state) => state.applyTemplatePreset)
+  const addSection = useExamStore((state) => state.addSection)
+  const updateSection = useExamStore((state) => state.updateSection)
+  const selectSection = useExamStore((state) => state.selectSection)
+  const duplicateSection = useExamStore((state) => state.duplicateSection)
+  const deleteSection = useExamStore((state) => state.deleteSection)
+  const setTargetTotalMarks = useExamStore((state) => state.setTargetTotalMarks)
+  const setNumberingMode = useExamStore((state) => state.setNumberingMode)
+  const saveBlockToBank = useExamStore((state) => state.saveBlockToBank)
+  const insertFromBank = useExamStore((state) => state.insertFromBank)
+  const saveSnippet = useExamStore((state) => state.saveSnippet)
+  const applySnippetToSectionInstructions = useExamStore(
+    (state) => state.applySnippetToSectionInstructions,
+  )
+  const applySnippetToBlockPrompt = useExamStore((state) => state.applySnippetToBlockPrompt)
+  const applySnippetToTemplateField = useExamStore((state) => state.applySnippetToTemplateField)
   const addBlock = useExamStore((state) => state.addBlock)
   const addImageBlock = useExamStore((state) => state.addImageBlock)
   const updateBlock = useExamStore((state) => state.updateBlock)
@@ -74,6 +134,10 @@ function App() {
   const [insertIndex, setInsertIndex] = useState(0)
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState('')
+  const [validationModalOpen, setValidationModalOpen] = useState(false)
+  const [pendingExport, setPendingExport] = useState<PendingExport | null>(null)
+  const [selectedExportMode, setSelectedExportMode] = useState<ExportMode>('student')
+  const [highlightedTemplateFieldId, setHighlightedTemplateFieldId] = useState<string | null>(null)
   const [draftAutosaveSource, setDraftAutosaveSource] = useState<'local' | 'indexeddb' | 'local-slim'>('local')
 
   const canRenderEditor = useMemo(() => screen === 'editor', [screen])
@@ -88,6 +152,42 @@ function App() {
 
     return 'local' as const
   }, [draftAutosaveSource, saveHandle])
+
+  const sectionTotals = useMemo(() => computeSectionMarks(project), [project])
+  const paperTotalMarks = useMemo(() => computePaperMarks(project), [project])
+  const validationWarnings = useMemo(() => buildExamWarnings(project), [project])
+
+  const sectionsForSidebar = useMemo(
+    () =>
+      project.sections.map((section) => {
+        const total = sectionTotals.find((entry) => entry.sectionId === section.id)?.total ?? 0
+        return {
+          id: section.id,
+          title: section.title,
+          instructions: section.instructions,
+          itemCount: section.items.length,
+          totalMarks: total,
+        }
+      }),
+    [project.sections, sectionTotals],
+  )
+
+  const selectedSectionIndex = useMemo(
+    () => project.sections.findIndex((section) => section.id === currentSection?.id),
+    [currentSection?.id, project.sections],
+  )
+
+  const questionNumberStart = useMemo(() => {
+    if (project.settings?.numberingMode === 'per_section' || selectedSectionIndex <= 0) {
+      return 1
+    }
+
+    return (
+      project.sections
+        .slice(0, selectedSectionIndex)
+        .reduce((sum, section) => sum + section.items.length, 0) + 1
+    )
+  }, [project.sections, project.settings?.numberingMode, selectedSectionIndex])
 
   const cacheAutosaveDraft = async (draftProject: typeof project) => {
     const target = await writeAutosaveProjectWithFallback(window.localStorage, draftProject)
@@ -341,11 +441,12 @@ function App() {
     }
   }
 
-  const exportPdf = async () => {
+  const runPdfExport = async (mode: ExportMode) => {
     setBusy(true)
     try {
-      await exportExamPdf(project, 'exam-paper.pdf')
-      setStatus('Exported PDF successfully.')
+      const suffix = exportModeFileSegment(mode)
+      await exportExamPdf(project, `exam-paper.${suffix}.pdf`, mode)
+      setStatus(`Exported PDF ${exportModeLabel(mode)} successfully.`)
     } catch {
       setStatus('PDF export failed.')
     } finally {
@@ -353,15 +454,81 @@ function App() {
     }
   }
 
-  const exportDocx = async () => {
+  const runDocxExport = async (mode: ExportMode) => {
     setBusy(true)
     try {
-      await exportExamDocx(project, 'exam-paper.docx')
-      setStatus('Exported DOCX successfully.')
+      const suffix = exportModeFileSegment(mode)
+      await exportExamDocx(project, `exam-paper.${suffix}.docx`, mode)
+      setStatus(`Exported DOCX ${exportModeLabel(mode)} successfully.`)
     } catch {
       setStatus('DOCX export failed.')
     } finally {
       setBusy(false)
+    }
+  }
+
+  const requestExport = (mode: 'pdf' | 'docx') => {
+    setHighlightedTemplateFieldId(null)
+    setPendingExport({
+      format: mode,
+      exportMode: selectedExportMode,
+    })
+    setValidationModalOpen(true)
+  }
+
+  const proceedValidatedExport = async () => {
+    if (!pendingExport) {
+      return
+    }
+
+    const requestedExport = pendingExport
+    setValidationModalOpen(false)
+    setPendingExport(null)
+
+    if (requestedExport.format === 'pdf') {
+      await runPdfExport(requestedExport.exportMode)
+      return
+    }
+
+    await runDocxExport(requestedExport.exportMode)
+  }
+
+  const jumpToWarning = (warning: ValidationWarning) => {
+    const target = warning.target
+    if (!target) {
+      return
+    }
+
+    if (target.kind === 'block') {
+      selectSection(target.sectionId)
+      selectBlock(target.blockId)
+      setHighlightedTemplateFieldId(null)
+      setValidationModalOpen(false)
+      setStatus('Jumped to question needing attention.')
+      return
+    }
+
+    if (target.kind === 'section') {
+      if (target.sectionId) {
+        selectSection(target.sectionId)
+      }
+      setHighlightedTemplateFieldId(null)
+      setValidationModalOpen(false)
+      setStatus('Jumped to section needing attention.')
+      return
+    }
+
+    if (target.kind === 'template_field') {
+      setHighlightedTemplateFieldId(target.fieldId)
+      setValidationModalOpen(false)
+      setStatus('Template metadata field highlighted in left sidebar.')
+      return
+    }
+
+    if (target.kind === 'marks') {
+      setHighlightedTemplateFieldId(null)
+      setValidationModalOpen(false)
+      setStatus('Open Marks Engine panel in left sidebar and adjust totals.')
     }
   }
 
@@ -387,8 +554,10 @@ function App() {
         onOpen={() => void handleNativeOpen()}
         onSave={() => void save()}
         onSaveAs={() => void saveAs()}
-        onExportPdf={() => void exportPdf()}
-        onExportDocx={() => void exportDocx()}
+        onExportPdf={() => requestExport('pdf')}
+        onExportDocx={() => requestExport('docx')}
+        exportMode={selectedExportMode}
+        onExportModeChange={setSelectedExportMode}
         isBusy={busy}
         isDirty={isDirty}
         lastSavedAt={lastSavedAt}
@@ -398,6 +567,19 @@ function App() {
 
       <EditorWorkspace
         templateFields={project.templateFields}
+        sections={sectionsForSidebar}
+        selectedSectionId={currentSection?.id ?? ''}
+        sectionTitle={currentSection?.title}
+        sectionInstructions={currentSection?.instructions}
+        questionNumberStart={questionNumberStart}
+        targetTotalMarks={project.settings?.targetTotalMarks}
+        paperTotalMarks={paperTotalMarks}
+        numberingMode={project.settings?.numberingMode ?? 'global'}
+        templatePresetId={project.settings?.templatePresetId}
+        validationWarnings={validationWarnings}
+        highlightedTemplateFieldId={highlightedTemplateFieldId}
+        questionBank={questionBank}
+        snippets={snippets}
         items={items}
         assets={project.assets}
         selectedBlock={selectedBlock}
@@ -407,6 +589,20 @@ function App() {
         onTemplateFieldAdd={addTemplateField}
         onTemplateFieldUpdate={updateTemplateField}
         onTemplateFieldRemove={removeTemplateField}
+        onReplaceTemplateFields={replaceTemplateFields}
+        onApplyTemplatePreset={applyTemplatePreset}
+        onAddSection={addSection}
+        onSelectSection={selectSection}
+        onUpdateSection={updateSection}
+        onDuplicateSection={duplicateSection}
+        onDeleteSection={deleteSection}
+        onSetTargetTotalMarks={setTargetTotalMarks}
+        onSetNumberingMode={setNumberingMode}
+        onSaveBlockToBank={saveBlockToBank}
+        onSaveSnippet={saveSnippet}
+        onApplySnippetToSection={applySnippetToSectionInstructions}
+        onApplySnippetToBlock={applySnippetToBlockPrompt}
+        onApplySnippetToTemplateField={applySnippetToTemplateField}
         onSelectBlock={selectBlock}
         onRequestInsert={(index) => {
           setInsertDialogOpen(true)
@@ -415,6 +611,10 @@ function App() {
         onCloseInsertDialog={() => setInsertDialogOpen(false)}
         onInsertType={(type, insertionIndex) => {
           addBlock(type, insertionIndex)
+          setInsertDialogOpen(false)
+        }}
+        onInsertFromBank={(entryId, insertionIndex) => {
+          insertFromBank(entryId, insertionIndex)
           setInsertDialogOpen(false)
         }}
         onPreviewPdf={() => void previewPdf()}
@@ -454,6 +654,19 @@ function App() {
       >
         Back to Home
       </button>
+
+      <ValidationModal
+        open={validationModalOpen}
+        mode={pendingExport?.format ?? null}
+        exportMode={pendingExport?.exportMode ?? null}
+        warnings={validationWarnings}
+        onClose={() => {
+          setValidationModalOpen(false)
+          setPendingExport(null)
+        }}
+        onProceed={() => void proceedValidatedExport()}
+        onJumpToFix={jumpToWarning}
+      />
     </div>
   )
 }
