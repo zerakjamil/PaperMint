@@ -67,7 +67,12 @@ export const examProjectSchema = z.object({
   settings: z
     .object({
       templatePresetId: z
-        .enum(['default_university', 'engineering_midterm', 'medical_final'])
+        .enum([
+          'default_university',
+          'engineering_midterm',
+          'medical_final',
+          'shaqlawa_linux_gui',
+        ])
         .optional(),
       targetTotalMarks: z.number().min(0).optional(),
       numberingMode: z.enum(['global', 'per_section']).optional(),
@@ -91,6 +96,15 @@ export const examProjectSchema = z.object({
           fontSizePt: z.number().int().min(6).max(72).optional(),
           fontFamily: z.string().optional(),
           colorHex: z.string().optional(),
+          position: z
+            .object({
+              x: z.number().optional(),
+              y: z.number().optional(),
+              width: z.number().optional(),
+              height: z.number().optional(),
+              rotationDeg: z.number().optional(),
+            })
+            .optional(),
         })
         .optional(),
     })

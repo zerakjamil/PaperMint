@@ -20,9 +20,16 @@ import {
 
 import { QuestionCard } from '@/components/preview/QuestionCard'
 import { Button } from '@/components/ui/Button'
-import type { AssetMap, TemplateField, QuestionBlock } from '@/types/exam'
+import { isImageSourceValue } from '@/lib/utils/exportLayout'
+import type {
+  AssetMap,
+  TemplateField,
+  TemplatePresetId,
+  QuestionBlock,
+} from '@/types/exam'
 
 type Props = {
+  templatePresetId?: TemplatePresetId
   templateFields: TemplateField[]
   items: QuestionBlock[]
   assets: AssetMap
@@ -114,9 +121,6 @@ const MetaLine = ({ field }: { field: TemplateField }) => {
   )
 }
 
-const isImageTemplateValue = (value?: string) =>
-  Boolean(value?.trim().startsWith('data:image/'))
-
 const InsertButton = ({ onClick }: { onClick: () => void }) => (
   <button
     type="button"
@@ -128,7 +132,111 @@ const InsertButton = ({ onClick }: { onClick: () => void }) => (
   </button>
 )
 
+const isImageTemplateValue = (value: string) => isImageSourceValue(value)
+
+const findField = (fields: TemplateField[], label: string) =>
+  fields.find((field) => field.label === label)
+
+const textValue = (field?: TemplateField) => field?.value ?? ''
+
+const ShaqlawaCoverPage = ({ fields }: { fields: TemplateField[] }) => {
+  const logo = findField(fields, 'Institution Logo')
+
+  return (
+    <div className="relative w-full border border-slate-300" style={{ aspectRatio: '612 / 792' }}>
+      <div className="absolute inset-0 bg-white p-6 text-slate-900" dir="rtl">
+        <div className="border-2 border-sky-500 px-3 py-1 text-[11px] leading-5">
+          <div className="flex items-center justify-between">
+            <span>{textValue(findField(fields, 'Top Strip Left'))}</span>
+            <span>{textValue(findField(fields, 'Top Strip Right'))}</span>
+          </div>
+        </div>
+
+        <div className="mt-2 grid grid-cols-[1fr_1fr_1fr] gap-2">
+          <div className="relative min-h-[170px] border-2 border-sky-500 p-3">
+            <div className="absolute left-6 top-2 h-28 w-16 rotate-[-40deg] border border-sky-500 bg-stone-100" />
+            <div className="mt-20 whitespace-pre-line text-right text-[24px] leading-10">
+              {textValue(findField(fields, 'Cover Left Metadata'))}
+            </div>
+          </div>
+
+          <div className="flex min-h-[170px] flex-col items-center justify-center gap-3 border-2 border-sky-500 p-3 text-center">
+            {logo && isImageTemplateValue(logo.value) ? (
+              <img src={logo.value} alt="Institution Logo" className="h-20 w-20 object-contain" />
+            ) : null}
+            <div className="whitespace-pre-line text-[24px] font-semibold leading-10">
+              {textValue(findField(fields, 'Session Banner'))}
+            </div>
+          </div>
+
+          <div className="flex min-h-[170px] flex-col gap-2">
+            <div className="border-2 border-sky-500 p-2 text-right text-[16px] leading-6">
+              <div className="whitespace-pre-line font-semibold">
+                {textValue(findField(fields, 'Institution Name (Kurdish)'))}
+              </div>
+              <div className="mt-2 text-left text-[18px] font-bold" dir="ltr">
+                {textValue(findField(fields, 'Institution Name (English)'))}
+              </div>
+            </div>
+            <div className="border-2 border-sky-500 p-2 text-right text-[30px] leading-10 whitespace-pre-line">
+              {textValue(findField(fields, 'Course Metadata'))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-[3fr_1fr] items-center gap-2">
+          <div className="h-16 border border-orange-500" />
+          <div className="border border-yellow-500 bg-yellow-300 p-2 text-center text-[24px] font-bold leading-8 whitespace-pre-line">
+            {textValue(findField(fields, 'Student Serial Label'))}
+          </div>
+        </div>
+
+        <div className="mt-2 border-t-2 border-amber-500">
+          <div className="grid grid-cols-[4fr_2fr_2fr_2fr_1fr] border-x border-b border-slate-400 text-center text-[18px]">
+            <div className="border-l border-slate-400 p-1">كۆی گشتی نمرهكە</div>
+            <div className="border-l border-slate-400 p-1">واژووی وردبین</div>
+            <div className="border-l border-slate-400 p-1">واژووی مامۆستا</div>
+            <div className="border-l border-slate-400 p-1">نمره</div>
+            <div className="p-1">پ</div>
+          </div>
+          <div className="grid grid-cols-[4fr_2fr_2fr_2fr_1fr] border-x border-b border-slate-400">
+            <div className="flex min-h-[260px] items-center justify-center border-l border-slate-400 bg-amber-100">
+              <div className="relative flex h-36 w-36 items-center justify-center rounded-full border border-green-500 text-[42px] font-bold">
+                60
+                <div className="absolute left-0 right-0 top-1/2 h-px bg-slate-500" />
+              </div>
+            </div>
+            <div className="border-l border-slate-400" />
+            <div className="border-l border-slate-400" />
+            <div className="border-l border-slate-400" />
+            <div className="flex flex-col text-center text-[32px] leading-[52px]">
+              <span className="border-b border-slate-400">پ1</span>
+              <span className="border-b border-slate-400">پ2</span>
+              <span className="border-b border-slate-400">پ3</span>
+              <span className="border-b border-slate-400">پ4</span>
+              <span className="border-b border-slate-400">پ5</span>
+              <span className="border-b border-slate-400">پ6</span>
+              <span>كۆ</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-3 border border-amber-100 bg-amber-50 p-3 text-[13px] leading-6 whitespace-pre-line">
+          <div className="text-right font-semibold">رێنمایی تاقى کردنەوەکان//</div>
+          {textValue(findField(fields, 'Cover Instructions'))}
+        </div>
+
+        <div className="mt-2 flex items-center justify-between border-2 border-sky-500 px-3 py-2 text-[18px]">
+          <span className="whitespace-pre-line text-right">{textValue(findField(fields, 'Lecturer Signature'))}</span>
+          <span className="font-semibold">{textValue(findField(fields, 'Footer Blessing'))}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export const PaperPreview = ({
+  templatePresetId,
   templateFields,
   items,
   assets,
@@ -159,8 +267,12 @@ export const PaperPreview = ({
   )
 
   const positioned = items.map((block, index) => ({ block, index }))
-  const pages = paginate(positioned)
-  const headerFields = templateFields.filter((field) => field.section === 'header')
+  const hasShaqlawaCover = templatePresetId === 'shaqlawa_linux_gui'
+  const questionPages = paginate(positioned)
+  const pages = hasShaqlawaCover ? ([[] as PositionedItem[], ...questionPages]) : questionPages
+  const headerFields = templateFields.filter(
+    (field) => field.section === 'header' && field.label !== 'Cover Page Image',
+  )
   const footerFields = templateFields.filter((field) => field.section === 'footer')
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -235,11 +347,21 @@ export const PaperPreview = ({
         >
           <SortableContext items={items.map((item) => item.id)} strategy={verticalListSortingStrategy}>
             {pages.map((pageItems, pageIndex) => (
+              (() => {
+                const isCoverPage = hasShaqlawaCover && pageIndex === 0
+                const questionPageIndex = hasShaqlawaCover ? pageIndex - 1 : pageIndex
+                const isFirstQuestionPage = questionPageIndex === 0
+
+                return (
               <article
                 key={`page-${pageIndex}`}
                 className="paper-page mx-auto"
               >
-                {pageIndex === 0 ? (
+                {isCoverPage ? (
+                  <ShaqlawaCoverPage fields={templateFields} />
+                ) : null}
+
+                {!isCoverPage && isFirstQuestionPage ? (
                   <header className="rounded-md border border-slate-300 p-3 mb-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-center sm:text-left">
                       {headerFields.map((field) =>
@@ -260,8 +382,9 @@ export const PaperPreview = ({
                   </header>
                 ) : null}
 
-                <div className="mt-4">
-                  {pageIndex === 0 && (sectionTitle || sectionInstructions) ? (
+                {!isCoverPage ? (
+                  <div className="mt-4">
+                    {isFirstQuestionPage && (sectionTitle || sectionInstructions) ? (
                     <section className="mb-3 rounded-md border border-slate-200 bg-slate-50 p-3">
                       {sectionTitle ? (
                         <h3 className="text-sm font-semibold text-slate-900">{sectionTitle}</h3>
@@ -272,34 +395,35 @@ export const PaperPreview = ({
                         </p>
                       ) : null}
                     </section>
-                  ) : null}
+                    ) : null}
 
-                  {pageItems.map((item) => (
-                    <div key={item.block.id}>
-                      <InsertButton onClick={() => onRequestInsert(item.index)} />
-                      <QuestionCard
-                        block={item.block}
-                        index={questionNumberStart + item.index - 1}
-                        selected={item.block.id === selectedBlockId}
-                        imagePath={
-                          item.block.type === 'image_question'
-                            ? assets[item.block.assetId]?.path
-                            : undefined
-                        }
-                        onSelect={() => onSelect(item.block.id)}
-                        onMoveUp={() => onMoveUp(item.block.id)}
-                        onMoveDown={() => onMoveDown(item.block.id)}
-                        onDuplicate={() => onDuplicate(item.block.id)}
-                        onDelete={() => onDelete(item.block.id)}
-                        onAttachImageFile={onAttachImageFile}
-                      />
-                    </div>
-                  ))}
+                    {pageItems.map((item) => (
+                      <div key={item.block.id}>
+                        <InsertButton onClick={() => onRequestInsert(item.index)} />
+                        <QuestionCard
+                          block={item.block}
+                          index={questionNumberStart + item.index - 1}
+                          selected={item.block.id === selectedBlockId}
+                          imagePath={
+                            item.block.type === 'image_question'
+                              ? assets[item.block.assetId]?.path
+                              : undefined
+                          }
+                          onSelect={() => onSelect(item.block.id)}
+                          onMoveUp={() => onMoveUp(item.block.id)}
+                          onMoveDown={() => onMoveDown(item.block.id)}
+                          onDuplicate={() => onDuplicate(item.block.id)}
+                          onDelete={() => onDelete(item.block.id)}
+                          onAttachImageFile={onAttachImageFile}
+                        />
+                      </div>
+                    ))}
 
-                  {pageIndex === pages.length - 1 ? (
-                    <InsertButton onClick={() => onRequestInsert(items.length)} />
-                  ) : null}
-                </div>
+                    {pageIndex === pages.length - 1 ? (
+                      <InsertButton onClick={() => onRequestInsert(items.length)} />
+                    ) : null}
+                  </div>
+                ) : null}
 
                 <footer className="mt-6 border-t border-slate-300 pt-2 text-[11px] text-slate-600">
                   <div className="flex flex-wrap justify-between gap-4">
@@ -323,6 +447,8 @@ export const PaperPreview = ({
                   <div className="text-center mt-2">Page {pageIndex + 1}</div>
                 </footer>
               </article>
+                )
+              })()
             ))}
           </SortableContext>
           <DragOverlay

@@ -86,9 +86,9 @@ export const QuestionCard = ({
     <article
       ref={setNodeRef}
       style={style}
-      className={`rounded-lg border bg-white p-3 transition ${
-        selected ? 'border-slate-900 shadow-md' : 'border-slate-200'
-      } ${isDragging ? 'opacity-70' : ''}`}
+      className={`relative rounded-lg border bg-white p-4 transition duration-200 ${
+        selected ? 'border-emerald-500 shadow-[0_0_0_1px_rgba(16,185,129,1)]' : 'border-slate-200 hover:border-slate-300'
+      } ${isDragging ? 'opacity-70 scale-[0.98]' : ''}`}
       onClick={onSelect}
       role="button"
       tabIndex={0}
@@ -99,12 +99,15 @@ export const QuestionCard = ({
       }}
     >
       <div className="mb-2 flex items-center justify-between gap-2 text-xs text-slate-500">
-        <span className="font-semibold">Question {index + 1}</span>
-        <div className="flex items-center gap-1">
+        <span className="font-semibold select-none">Question {index + 1}</span>
+      </div>
+
+      {selected ? (
+        <div className="absolute -top-3 right-4 flex items-center gap-1 rounded-md border border-slate-200 bg-white p-1 shadow-md z-10 animate-in fade-in zoom-in duration-200">
           <button
             type="button"
             aria-label="Drag question"
-            className="rounded border border-slate-200 px-2 py-1 hover:bg-slate-100"
+            className="flex items-center gap-1 cursor-grab active:cursor-grabbing rounded px-2 py-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 font-medium"
             onClick={(event) => {
               event.preventDefault()
               event.stopPropagation()
@@ -112,26 +115,29 @@ export const QuestionCard = ({
             {...attributes}
             {...listeners}
           >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
             Drag
           </button>
-          <Button variant="ghost" className="px-2 py-1 text-xs" onClick={runCardAction(onMoveUp)}>
+          <div className="h-4 w-px bg-slate-200 mx-1" />
+          <Button variant="ghost" className="h-7 px-2 py-1 text-xs hover:bg-slate-100 text-slate-600" onClick={runCardAction(onMoveUp)}>
             Up
           </Button>
-          <Button variant="ghost" className="px-2 py-1 text-xs" onClick={runCardAction(onMoveDown)}>
+          <Button variant="ghost" className="h-7 px-2 py-1 text-xs hover:bg-slate-100 text-slate-600" onClick={runCardAction(onMoveDown)}>
             Down
           </Button>
-          <Button variant="ghost" className="px-2 py-1 text-xs" onClick={runCardAction(onDuplicate)}>
+          <div className="h-4 w-px bg-slate-200 mx-1" />
+          <Button variant="ghost" className="h-7 px-2 py-1 text-xs hover:bg-slate-100 text-slate-600" onClick={runCardAction(onDuplicate)}>
             Duplicate
           </Button>
           <Button
             variant="ghost"
-            className="px-2 py-1 text-xs text-rose-700"
+            className="h-7 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 font-medium"
             onClick={runCardAction(onDelete)}
           >
             Delete
           </Button>
         </div>
-      </div>
+      ) : null}
 
       <p className="text-sm font-semibold text-slate-900">
         {block.prompt}

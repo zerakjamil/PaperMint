@@ -13,6 +13,8 @@ import {
   fitWithinBox,
   getImageDimensionsFromDataUrl,
   getImageTypeFromDataUrl,
+  isImageSourceValue,
+  resolveImageDataUrl,
 } from '@/lib/utils/exportLayout'
 import {
   getBlockAnswerText,
@@ -51,7 +53,7 @@ const dataUrlToBytes = (dataUrl: string) => {
   return bytes
 }
 
-const isImageTemplateValue = (value: string) => value.trim().startsWith('data:image/')
+const isImageTemplateValue = (value: string) => isImageSourceValue(value)
 
 const resolveAlignment = (
   alignment: TemplateField['style'] | undefined,
@@ -127,12 +129,13 @@ const templateFieldParagraph = async (
     })
   }
 
-  const bytes = dataUrlToBytes(field.value)
+  const imageDataUrl = await resolveImageDataUrl(field.value)
+  const bytes = dataUrlToBytes(imageDataUrl)
   if (!bytes) {
     return null
   }
 
-  const sourceDimensions = await getImageDimensionsFromDataUrl(field.value).catch(
+  const sourceDimensions = await getImageDimensionsFromDataUrl(imageDataUrl).catch(
     () => ({ width: 1200, height: 800 }),
   )
   const fitted = fitWithinBox(sourceDimensions, {
@@ -145,7 +148,7 @@ const templateFieldParagraph = async (
     children: [
       new ImageRun({
         data: bytes,
-        type: getImageTypeFromDataUrl(field.value),
+        type: getImageTypeFromDataUrl(imageDataUrl),
         transformation: {
           width: fitted.width,
           height: fitted.height,
@@ -232,13 +235,14 @@ const questionParagraphs = async (
     const asset = assets[block.assetId]
 
     if (asset?.path) {
-      const bytes = dataUrlToBytes(asset.path)
+      const imageSource = await resolveImageDataUrl(asset.path).catch(() => asset.path)
+      const bytes = dataUrlToBytes(imageSource)
       if (bytes) {
         const size = block.size ?? 'medium'
         const sourceDimensions =
           asset.width && asset.height
             ? { width: asset.width, height: asset.height }
-            : await getImageDimensionsFromDataUrl(asset.path).catch(
+            : await getImageDimensionsFromDataUrl(imageSource).catch(
                 () => ({ width: 1600, height: 900 }),
               )
         const fitted = fitWithinBox(sourceDimensions, {
@@ -259,7 +263,7 @@ const questionParagraphs = async (
             children: [
               new ImageRun({
                 data: bytes,
-                type: getImageTypeFromDataUrl(asset.path),
+                type: getImageTypeFromDataUrl(imageSource),
                 transformation: {
                   width: fitted.width,
                   height: fitted.height,
@@ -317,8 +321,29 @@ export const buildExamDocx = async (
   project: ExamProject,
   mode: ExportMode = 'student',
 ) => {
-  const headerFields = project.templateFields ? project.templateFields.filter(f => f.section === 'header') : []
+  const coverImageField = project.templateFields
+    ? project.templateFields.find(
+        (field) =>
+          field.section === 'header' &&
+          field.label === 'Cover Page Image' &&
+          isImageTemplateValue(field.value),
+      )
+    : undefined
+  const headerFields = project.templateFields
+    ? project.templateFields.filter(
+        (field) => field.section === 'header' && field.label !== 'Cover Page Image',
+      )
+    : []
   const footerFields = project.templateFields ? project.templateFields.filter(f => f.section === 'footer') : []
+
+  const coverParagraph = coverImageField
+    ? await templateFieldParagraph(coverImageField, {
+        align: AlignmentType.CENTER,
+        maxWidth: 520,
+        maxHeight: 700,
+        spacingAfter: 180,
+      })
+    : null
 
   const headerParagraphs = (
     await Promise.all(
@@ -334,12 +359,15 @@ export const buildExamDocx = async (
     )
   ).filter((paragraph): paragraph is Paragraph => Boolean(paragraph))
 
-  const introParagraphs = headerParagraphs.length > 0 ? headerParagraphs : [
+  const introParagraphs = [
+    ...(coverParagraph ? [coverParagraph] : []),
+    ...(headerParagraphs.length > 0 ? headerParagraphs : [
       new Paragraph({
           alignment: AlignmentType.CENTER,
           children: [new TextRun({ text: 'Metadata missing', bold: true })],
           spacing: { after: 60 },
       }),
+    ]),
   ]
 
   const questionParagraphCollection: Paragraph[][] = []

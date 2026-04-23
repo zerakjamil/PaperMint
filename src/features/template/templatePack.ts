@@ -26,7 +26,12 @@ const templateFieldSchema = z.object({
 const templatePackSchema = z.object({
   version: z.literal(1),
   templatePresetId: z
-    .enum(['default_university', 'engineering_midterm', 'medical_final'])
+    .enum([
+      'default_university',
+      'engineering_midterm',
+      'medical_final',
+      'shaqlawa_linux_gui',
+    ])
     .optional(),
   templateFields: z.array(templateFieldSchema),
 })

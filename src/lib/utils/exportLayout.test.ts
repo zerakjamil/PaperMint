@@ -1,4 +1,8 @@
-import { fitWithinBox, getImageTypeFromDataUrl } from './exportLayout'
+import {
+  fitWithinBox,
+  getImageTypeFromDataUrl,
+  isImageSourceValue,
+} from './exportLayout'
 
 describe('export layout helpers', () => {
   it('scales down oversized images while preserving aspect ratio', () => {
@@ -35,5 +39,17 @@ describe('export layout helpers', () => {
     expect(getImageTypeFromDataUrl('data:image/png;base64,abc')).toBe('png')
     expect(getImageTypeFromDataUrl('data:image/jpeg;base64,abc')).toBe('jpg')
     expect(getImageTypeFromDataUrl('data:image/webp;base64,abc')).toBe('png')
+  })
+
+  it('normalizes image type from URL extension fallback', () => {
+    expect(getImageTypeFromDataUrl('/templates/example.jpg')).toBe('jpg')
+    expect(getImageTypeFromDataUrl('/templates/example.png?cache=1')).toBe('png')
+  })
+
+  it('detects image sources from either data URLs or file paths', () => {
+    expect(isImageSourceValue('data:image/png;base64,abc')).toBe(true)
+    expect(isImageSourceValue('/templates/logo.png')).toBe(true)
+    expect(isImageSourceValue('')).toBe(false)
+    expect(isImageSourceValue('not-an-image-value')).toBe(false)
   })
 })

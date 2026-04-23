@@ -278,4 +278,17 @@ describe('exam store', () => {
       'Assess conceptual understanding before formula steps.',
     )
   })
+
+  it('starts Shaqlawa Linux GUI template project', () => {
+    const store = useExamStore.getState()
+
+    store.startShaqlawaLinuxGuiProject()
+
+    const next = useExamStore.getState().project
+    expect(next.settings?.templatePresetId).toBe('shaqlawa_linux_gui')
+    expect(next.settings?.targetTotalMarks).toBe(60)
+    expect(next.sections).toHaveLength(4)
+    expect(next.sections[0]?.title).toBe('Q1/ Choose the right answer:')
+    expect(Object.values(next.assets).some((asset) => asset.path === '/templates/linux-gui-q4.png')).toBe(true)
+  })
 })

@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent } from 'react'
+import { useMemo, useState, useRef, useEffect, type ChangeEvent } from 'react'
 
 import { downloadBlob } from '@/lib/file-system/projectFile'
 import {
@@ -6,8 +6,16 @@ import {
   serializeTemplatePack,
 } from '@/features/template/templatePack'
 import { templatePresets } from '@/features/template/templateLibrary'
+import { scanTemplateImage } from '@/features/template/ocrScanner'
 import type { ValidationWarning } from '@/features/validation/examValidation'
-import type { SnippetEntry, SnippetKind, TemplateField, QuestionBlock } from '@/types/exam'
+import { isImageSourceValue } from '@/lib/utils/exportLayout'
+import type {
+  SnippetEntry,
+  SnippetKind,
+  TemplateField,
+  TemplatePresetId,
+  QuestionBlock,
+} from '@/types/exam'
 import { InputField } from '@/components/ui/InputField'
 import { Panel } from '@/components/ui/Panel'
 
@@ -24,7 +32,7 @@ type Props = {
   targetTotalMarks?: number
   paperTotalMarks: number
   numberingMode: 'global' | 'per_section'
-  templatePresetId?: 'default_university' | 'engineering_midterm' | 'medical_final'
+  templatePresetId?: TemplatePresetId
   validationWarnings: ValidationWarning[]
   highlightedTemplateFieldId?: string | null
   snippets: SnippetEntry[]
@@ -33,9 +41,9 @@ type Props = {
   onTemplateFieldRemove: (id: string) => void
   onReplaceTemplateFields: (
     templateFields: TemplateField[],
-    templatePresetId?: 'default_university' | 'engineering_midterm' | 'medical_final',
+    templatePresetId?: TemplatePresetId,
   ) => void
-  onApplyTemplatePreset: (presetId: 'default_university' | 'engineering_midterm' | 'medical_final') => void
+  onApplyTemplatePreset: (presetId: TemplatePresetId) => void
   onAddSection: () => void
   onSelectSection: (sectionId: string) => void
   onUpdateSection: (sectionId: string, updates: { title?: string; instructions?: string }) => void
@@ -64,7 +72,7 @@ const blockTitle = (type: QuestionBlock['type']) => {
   return 'Image'
 }
 
-const isImageTemplateValue = (value: string) => value.trim().startsWith('data:image/')
+const isImageTemplateValue = (value: string) => isImageSourceValue(value)
 
 const looksLikeLogoField = (field: TemplateField) =>
   field.section === 'header' && /logo/i.test(field.label)
@@ -357,6 +365,8 @@ export const LeftSidebar = ({
   const [snippetContent, setSnippetContent] = useState('')
   const [snippetKind, setSnippetKind] = useState<SnippetKind>('instruction')
   const [templateLibraryStatus, setTemplateLibraryStatus] = useState('')
+  const [scannerProgress, setScannerProgress] = useState(0)
+  const [isScanning, setIsScanning] = useState(false)
 
   const logoField = useMemo(
     () =>
@@ -371,6 +381,21 @@ export const LeftSidebar = ({
 
   const canSaveSnippet = snippetTitle.trim().length > 0 && snippetContent.trim().length > 0
 
+  const selectedSectionRef = useRef<HTMLButtonElement>(null)
+  const selectedBlockRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (selectedSectionRef.current) {
+      selectedSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  }, [selectedSectionId])
+
+  useEffect(() => {
+    if (selectedBlockRef.current) {
+      selectedBlockRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  }, [selectedBlockId])
+
   return (
   <aside className="space-y-3 overflow-y-auto p-3">
     <Panel title="Template Library">
@@ -380,7 +405,7 @@ export const LeftSidebar = ({
           value={templatePresetId ?? 'default_university'}
           onChange={(event) =>
             onApplyTemplatePreset(
-              event.target.value as 'default_university' | 'engineering_midterm' | 'medical_final',
+                event.target.value as TemplatePresetId,
             )
           }
         >
@@ -485,6 +510,53 @@ export const LeftSidebar = ({
             </label>
           </div>
 
+          <div className="mt-2 space-y-2 rounded-md border border-amber-200 bg-amber-50/50 p-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+              Auto-Extract via OCR Scan
+            </p>
+            <p className="text-[11px] text-amber-600">
+              Upload a scanned exam. We will auto-detect the header/footer zones, extract text, and auto-place the logo.
+            </p>
+            <label className={`block cursor-pointer rounded-md border border-amber-300 bg-white px-2 py-1.5 text-center text-xs font-medium text-amber-700 hover:bg-amber-50 ${isScanning ? 'opacity-50 pointer-events-none' : ''}`}>
+              {isScanning ? `Scanning... ${scannerProgress}%` : 'Upload Scanned Paper Image'}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={isScanning}
+                onChange={async (event) => {
+                  const file = event.target.files?.[0]
+                  event.target.value = ''
+                  if (!file) return
+
+                  try {
+                    setIsScanning(true)
+                    setScannerProgress(0)
+                    setTemplateLibraryStatus('Initiating OCR scan...')
+                    const reader = new FileReader()
+                    const dataUrl = await new Promise<string>((resolve, reject) => {
+                      reader.onload = () => resolve(reader.result as string)
+                      reader.onerror = reject
+                      reader.readAsDataURL(file)
+                    })
+                    
+                    const fields = await scanTemplateImage(dataUrl, (prog, msg) => {
+                        setScannerProgress(prog)
+                        setTemplateLibraryStatus(msg)
+                    })
+                    
+                    onReplaceTemplateFields(fields)
+                    setTemplateLibraryStatus('Scanned template applied.')
+                  } catch (err) {
+                    setTemplateLibraryStatus('Scan failed: ' + (err as Error).message)
+                  } finally {
+                    setIsScanning(false)
+                  }
+                }}
+              />
+            </label>
+          </div>
+
           {templateLibraryStatus ? (
             <p className="text-[11px] text-slate-600">{templateLibraryStatus}</p>
           ) : null}
@@ -498,6 +570,7 @@ export const LeftSidebar = ({
           <button
             key={section.id}
             type="button"
+            ref={section.id === selectedSectionId ? selectedSectionRef : null}
             onClick={() => onSelectSection(section.id)}
             className={`w-full rounded-md px-2 py-2 text-left text-xs transition ${
               section.id === selectedSectionId
@@ -650,6 +723,7 @@ export const LeftSidebar = ({
           <li key={item.id}>
             <button
               type="button"
+              ref={item.id === selectedBlockId ? selectedBlockRef : null}
               onClick={() => onSelectBlock(item.id)}
               className={`w-full rounded-md px-2 py-2 text-left text-sm transition ${
                 selectedBlockId === item.id

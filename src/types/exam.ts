@@ -12,6 +12,7 @@ export type TemplatePresetId =
   | 'default_university'
   | 'engineering_midterm'
   | 'medical_final'
+  | 'shaqlawa_linux_gui'
 
 export type ExamSettings = {
   templatePresetId?: TemplatePresetId
@@ -112,6 +113,13 @@ export type TemplateFieldStyle = {
   fontSizePt?: number
   fontFamily?: string
   colorHex?: string
+  position?: {
+    x?: number
+    y?: number
+    width?: number
+    height?: number
+    rotationDeg?: number
+  }
 }
 
 export type TemplateField = {

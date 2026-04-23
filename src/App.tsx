@@ -93,6 +93,9 @@ function App() {
 
   const setScreen = useExamStore((state) => state.setScreen)
   const startNewProject = useExamStore((state) => state.startNewProject)
+  const startShaqlawaLinuxGuiProject = useExamStore(
+    (state) => state.startShaqlawaLinuxGuiProject,
+  )
   const openProject = useExamStore((state) => state.openProject)
   const addTemplateField = useExamStore((state) => state.addTemplateField)
   const updateTemplateField = useExamStore((state) => state.updateTemplateField)
@@ -202,6 +205,13 @@ function App() {
     setDraftAutosaveSource('local')
     void clearAutosaveProjectWithFallback(window.localStorage)
     setStatus('Started new exam project.')
+  }
+
+  const startLinuxGuiTemplate = () => {
+    startShaqlawaLinuxGuiProject()
+    setDraftAutosaveSource('local')
+    void clearAutosaveProjectWithFallback(window.localStorage)
+    setStatus('Started Shaqlawa Linux (GUI) template project.')
   }
 
   useEffect(() => {
@@ -535,7 +545,11 @@ function App() {
   if (!canRenderEditor) {
     return (
       <>
-        <HomeScreen onNew={startNew} onOpen={() => void handleNativeOpen()} />
+        <HomeScreen
+          onNew={startNew}
+          onNewLinuxGuiTemplate={startLinuxGuiTemplate}
+          onOpen={() => void handleNativeOpen()}
+        />
         <input
           ref={fileInputRef}
           type="file"

@@ -47,31 +47,20 @@ const presets: TemplatePreset[] = [
       {
         label: 'Institution Block',
         value:
-          'Ministry of Higher Education and Scientific Research\nErbil Polytechnic University\nTechnical College of Computer and Informatics Engineering\nDepartment: ISE',
+          'Ministry of Higher Education and Scientific\nResearch Erbil Polytechnic University Technical\nCollege of Computer and Informatics Engineering\nDepartment: ISE\n\nClass: 1 Semester: 1st Semester Subject: Computer                           Academic Year 2024 - 2025 Final Exam\nEssentials Time: 120 min Date: DD/MM/YYYY\nCode: COE103',
         style: { alignment: 'left', bold: true, fontSizePt: 10 },
       },
       {
         label: 'Institution Logo',
-        value: '',
+        value: '-',
         displayMode: 'value_only',
-        style: { alignment: 'center', bold: false, fontSizePt: 10 },
-      },
-      {
-        label: 'Class Metadata',
-        value:
-          'Class: 1\nSemester: 1st Semester\nSubject: Computer Essentials\nTime: 120 min\nDate: DD/MM/YYYY\nCode: COE103',
-        style: { alignment: 'right', bold: true, fontSizePt: 10 },
-      },
-      {
-        label: 'Exam Session Banner',
-        value: 'Academic Year 2024 - 2025\nFinal Exam',
-        style: { alignment: 'center', bold: true, fontSizePt: 11 },
+        style: { alignment: 'right', bold: false, fontSizePt: 10 },
       },
     ],
     footer: [
-      { label: 'Footer Blessing', value: 'Best of Luck', style: { alignment: 'center', bold: true, fontSizePt: 13 } },
-      { label: 'Signature Left', value: 'Lecturer: ____________________', style: { alignment: 'left', bold: true, fontSizePt: 10 } },
-      { label: 'Signature Right', value: 'Examiner: ____________________', style: { alignment: 'right', bold: true, fontSizePt: 10 } },
+      { label: 'Footer Blessing', value: 'Best of Luck', style: { alignment: 'center', bold: true, fontSizePt: 10 } },
+      { label: 'Signature Left', value: 'Lecturer: ____________________', style: { alignment: 'right', bold: true, fontSizePt: 10 } },
+      { label: 'Signature Right', value: 'Examiner: ____________________', style: { alignment: 'left', bold: true, fontSizePt: 10 } },
     ],
   },
   {
@@ -172,6 +161,101 @@ const presets: TemplatePreset[] = [
       { label: 'Footer Blessing', value: 'Good luck', style: { alignment: 'center', bold: true, fontSizePt: 13 } },
       { label: 'Signature Left', value: 'Asst. Prof.: ____________________', style: { alignment: 'left', bold: true, fontSizePt: 10 } },
       { label: 'Signature Right', value: 'Examiner: ____________________', style: { alignment: 'right', bold: true, fontSizePt: 10 } },
+    ],
+  },
+  {
+    id: 'shaqlawa_linux_gui',
+    name: 'Shaqlawa Linux (GUI)',
+    description:
+      'Linux (GUI) first-round exam template with Kurdish cover sheet, fixed metadata, and editable question content.',
+    rules: {
+      enforcedHeaderDisplayMode: 'value_only',
+      enforcedFooterDisplayMode: 'value_only',
+      enforcedHeaderStyle: {
+        alignment: 'right',
+        bold: true,
+        fontFamily: 'Times New Roman',
+        fontSizePt: 11,
+      },
+      enforcedFooterStyle: {
+        alignment: 'right',
+        fontFamily: 'Times New Roman',
+        fontSizePt: 10,
+      },
+    },
+    header: [
+      {
+        label: 'Top Strip Left',
+        value: 'بابەت/ Linux (GUI) / قۆناغ / سێیەمی کۆمپیوتەر',
+        style: { alignment: 'left', bold: false, fontSizePt: 12 },
+      },
+      {
+        label: 'Top Strip Right',
+        value: 'سیریال قوتابی //',
+        style: { alignment: 'right', bold: false, fontSizePt: 12 },
+      },
+      {
+        label: 'Institution Logo',
+        value: '/templates/shaqlawa-logo.png',
+        displayMode: 'value_only',
+        style: { alignment: 'center', bold: false, fontSizePt: 10 },
+      },
+      {
+        label: 'Cover Page Image',
+        value: '/templates/linux-gui-cover.png',
+        displayMode: 'value_only',
+        style: { alignment: 'center', bold: false, fontSizePt: 10 },
+      },
+      {
+        label: 'Institution Name (Kurdish)',
+        value:
+          'پەیمانگەى شەقاڵوەى ناحكومى\nبۆ زانستەكانى (كۆمپیوتەر / كارگێرى / ژمێریارى)',
+        style: { alignment: 'right', bold: true, fontSizePt: 12 },
+      },
+      {
+        label: 'Institution Name (English)',
+        value: 'Shaqlawa private Institute',
+        style: { alignment: 'right', bold: true, fontSizePt: 12 },
+      },
+      {
+        label: 'Course Metadata',
+        value:
+          'بابەت/ Linux (GUI)\nبەشی / کۆمپیوتەر\nقۆناغ/ سێیەم\nكات/ 1:30 كاتژێر',
+        style: { alignment: 'right', bold: false, fontSizePt: 11 },
+      },
+      {
+        label: 'Session Banner',
+        value: 'تاقی كردنهوهكانی كۆتایــــی ساڵ\n2025-2026\nخوولی یهكهم',
+        style: { alignment: 'center', bold: true, fontSizePt: 14 },
+      },
+      {
+        label: 'Cover Left Metadata',
+        value: 'بەش/\nقۆناغی/\nهۆبە /',
+        style: { alignment: 'right', bold: false, fontSizePt: 12 },
+      },
+      {
+        label: 'Student Serial Label',
+        value: 'سیریال\nقوتابی',
+        style: { alignment: 'center', bold: true, fontSizePt: 12 },
+      },
+    ],
+    footer: [
+      {
+        label: 'Cover Instructions',
+        value:
+          '* بە پێنوسى دار (رصاص) دەبێ وەاڵمى پرسیارەکان بدرێتەوە بەجاف وەاڵم دانەوە بە گزى هەژمار دەکرێت.\n* قوتابى لەهەر بابەتێک گزى بکات لە هەموو بابەتەکان بە کەوتوو هەژمار دەکرێت.\n* دانانى هەر تێبینەیەکى وهێمایەک دوور لەبابەتە کە لە ناو پەراوى پرسیارەکان بەگزى هەژماردەکرێت.\n* سیریالی قوتابی دەبێت لەهەموو پەرەكان بنووسرێت.',
+        style: { alignment: 'right', bold: false, fontSizePt: 10 },
+      },
+      {
+        label: 'Footer Blessing',
+        value: 'بەهیوای سەركەوتن',
+        style: { alignment: 'center', bold: true, fontSizePt: 14 },
+      },
+      {
+        label: 'Lecturer Signature',
+        value: 'مامۆستای بابەت\nایالف ناظم انور',
+        style: { alignment: 'right', bold: false, fontSizePt: 12 },
+      },
     ],
   },
 ]

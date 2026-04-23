@@ -3,6 +3,44 @@ export type Size = {
   height: number
 }
 
+const imageExtensionPattern = /\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i
+
+export const isImageSourceValue = (value?: string) => {
+  const trimmed = value?.trim() ?? ''
+
+  if (!trimmed) {
+    return false
+  }
+
+  return (
+    trimmed.startsWith('data:image/') ||
+    trimmed.startsWith('blob:') ||
+    imageExtensionPattern.test(trimmed)
+  )
+}
+
+export const resolveImageDataUrl = async (source: string): Promise<string> => {
+  const trimmed = source.trim()
+
+  if (trimmed.startsWith('data:image/')) {
+    return trimmed
+  }
+
+  const response = await fetch(trimmed)
+  if (!response.ok) {
+    throw new Error('Unable to load image source for export.')
+  }
+
+  const blob = await response.blob()
+
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result ?? ''))
+    reader.onerror = () => reject(new Error('Unable to decode image source.'))
+    reader.readAsDataURL(blob)
+  })
+}
+
 export const fitWithinBox = (
   source: Size,
   bounds: Size,
@@ -32,6 +70,15 @@ export const getImageTypeFromDataUrl = (dataUrl: string): 'png' | 'jpg' => {
   }
 
   if (mime === 'image/png') {
+    return 'png'
+  }
+
+  const normalized = dataUrl.split('?')[0]?.toLowerCase() ?? ''
+  if (normalized.endsWith('.jpg') || normalized.endsWith('.jpeg')) {
+    return 'jpg'
+  }
+
+  if (normalized.endsWith('.png')) {
     return 'png'
   }
 

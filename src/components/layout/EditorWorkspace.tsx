@@ -3,6 +3,7 @@ import type {
   SnippetEntry,
   SnippetKind,
   TemplateField,
+  TemplatePresetId,
   QuestionBlock,
 } from '@/types/exam'
 import type { AssetMap } from '@/types/exam'
@@ -23,7 +24,7 @@ type Props = {
   targetTotalMarks?: number
   paperTotalMarks: number
   numberingMode: 'global' | 'per_section'
-  templatePresetId?: 'default_university' | 'engineering_midterm' | 'medical_final'
+  templatePresetId?: TemplatePresetId
   validationWarnings: ValidationWarning[]
   highlightedTemplateFieldId?: string | null
   questionBank: QuestionBankEntry[]
@@ -44,9 +45,9 @@ type Props = {
   onTemplateFieldRemove: (id: string) => void
   onReplaceTemplateFields: (
     templateFields: TemplateField[],
-    templatePresetId?: 'default_university' | 'engineering_midterm' | 'medical_final',
+    templatePresetId?: TemplatePresetId,
   ) => void
-  onApplyTemplatePreset: (presetId: 'default_university' | 'engineering_midterm' | 'medical_final') => void
+  onApplyTemplatePreset: (presetId: TemplatePresetId) => void
   onAddSection: () => void
   onSelectSection: (sectionId: string) => void
   onUpdateSection: (sectionId: string, updates: { title?: string; instructions?: string }) => void
@@ -171,6 +172,7 @@ export const EditorWorkspace = ({
     />
 
     <PaperPreview
+      templatePresetId={templatePresetId}
       templateFields={templateFields}
       items={items}
       assets={assets}

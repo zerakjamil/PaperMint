@@ -5,6 +5,8 @@ import {
   fitWithinBox,
   getImageDimensionsFromDataUrl,
   getImageTypeFromDataUrl,
+  isImageSourceValue,
+  resolveImageDataUrl,
 } from '@/lib/utils/exportLayout'
 import {
   getBlockAnswerText,
@@ -32,7 +34,12 @@ type PdfWriteContext = {
   y: number
 }
 
-const isImageTemplateValue = (value: string) => value.trim().startsWith('data:image/')
+const isImageTemplateValue = (value: string) => isImageSourceValue(value)
+
+const findField = (fields: ExamProject['templateFields'], label: string) =>
+  fields.find((field) => field.label === label)
+
+const textValue = (field?: ExamProject['templateFields'][number]) => field?.value ?? ''
 
 const createContext = (pdf: jsPDF): PdfWriteContext => ({
   pdf,
@@ -83,11 +90,13 @@ const drawRule = (context: PdfWriteContext) => {
 
 const drawTemplateImage = async (
   context: PdfWriteContext,
-  dataUrl: string,
+  source: string,
   maxWidth: number,
   maxHeight: number,
 ) => {
-  const sourceDimensions = await getImageDimensionsFromDataUrl(dataUrl).catch(
+  const imageDataUrl = await resolveImageDataUrl(source)
+
+  const sourceDimensions = await getImageDimensionsFromDataUrl(imageDataUrl).catch(
     () => ({ width: 1400, height: 800 }),
   )
 
@@ -98,9 +107,95 @@ const drawTemplateImage = async (
 
   ensureSpace(context, fitted.height + 6)
   const x = margin + (contentWidth - fitted.width) / 2
-  const format = getImageTypeFromDataUrl(dataUrl) === 'jpg' ? 'JPEG' : 'PNG'
-  context.pdf.addImage(dataUrl, format, x, context.y, fitted.width, fitted.height)
+  const format = getImageTypeFromDataUrl(imageDataUrl) === 'jpg' ? 'JPEG' : 'PNG'
+  context.pdf.addImage(imageDataUrl, format, x, context.y, fitted.width, fitted.height)
   context.y += fitted.height + 6
+}
+
+const drawShaqlawaCoverPage = async (pdf: jsPDF, fields: ExamProject['templateFields']) => {
+  const topStripLeft = textValue(findField(fields, 'Top Strip Left'))
+  const topStripRight = textValue(findField(fields, 'Top Strip Right'))
+  const logoField = findField(fields, 'Institution Logo')
+
+  pdf.addPage('a4', 'portrait')
+  pdf.setFont('times', 'normal')
+
+  pdf.setDrawColor(100)
+  pdf.setLineWidth(0.6)
+
+  pdf.rect(10, 10, 190, 277)
+  pdf.rect(14, 14, 182, 14)
+  pdf.setFontSize(9)
+  pdf.text(topStripLeft, 17, 23, { align: 'left' })
+  pdf.text(topStripRight, 190, 23, { align: 'right' })
+
+  pdf.rect(14, 30, 182, 55)
+  pdf.rect(14, 30, 56, 55)
+  pdf.rect(74, 30, 44, 55)
+  pdf.rect(122, 30, 74, 55)
+
+  pdf.setFontSize(20)
+  pdf.text(textValue(findField(fields, 'Cover Left Metadata')), 22, 56, { align: 'left' })
+
+  if (logoField?.value) {
+    const imageSource = await resolveImageDataUrl(logoField.value)
+    const format = getImageTypeFromDataUrl(imageSource) === 'jpg' ? 'JPEG' : 'PNG'
+    pdf.addImage(imageSource, format, 84, 38, 24, 24)
+  }
+
+  pdf.setFontSize(19)
+  pdf.text(textValue(findField(fields, 'Session Banner')), 96, 60, { align: 'center' })
+
+  pdf.setFontSize(11)
+  pdf.text(textValue(findField(fields, 'Institution Name (Kurdish)')), 190, 43, {
+    align: 'right',
+    maxWidth: 68,
+  })
+  pdf.text(textValue(findField(fields, 'Institution Name (English)')), 190, 72, {
+    align: 'right',
+    maxWidth: 68,
+  })
+  pdf.text(textValue(findField(fields, 'Course Metadata')), 190, 85, {
+    align: 'right',
+    maxWidth: 68,
+  })
+
+  pdf.rect(14, 89, 182, 13)
+  pdf.rect(14, 89, 150, 13)
+  pdf.rect(168, 89, 28, 13)
+  pdf.setFontSize(9)
+  pdf.text(textValue(findField(fields, 'Student Serial Label')), 182, 98, {
+    align: 'center',
+    maxWidth: 20,
+  })
+
+  pdf.rect(14, 106, 182, 103)
+  pdf.rect(14, 106, 124, 12)
+  pdf.rect(138, 106, 26, 12)
+  pdf.rect(164, 106, 32, 12)
+  pdf.rect(14, 118, 124, 91)
+  pdf.rect(138, 118, 26, 91)
+  pdf.rect(164, 118, 32, 91)
+  pdf.text('كۆی گشتی نمرهكە', 78, 114, { align: 'center' })
+  pdf.text('واژووی وردبین', 151, 114, { align: 'center' })
+  pdf.text('واژووی مامۆستا', 180, 114, { align: 'center' })
+  pdf.setFontSize(34)
+  pdf.text('60', 76, 170, { align: 'center' })
+  pdf.setFontSize(12)
+  pdf.text('پ1\nپ2\nپ3\nپ4\nپ5\nپ6\nكۆ', 180, 133, { align: 'center', maxWidth: 20 })
+
+  pdf.rect(14, 215, 182, 47)
+  pdf.setFontSize(10)
+  pdf.text(textValue(findField(fields, 'Cover Instructions')), 18, 222, { maxWidth: 172 })
+
+  pdf.rect(14, 266, 182, 14)
+  pdf.setFontSize(13)
+  pdf.text(textValue(findField(fields, 'Footer Blessing')), 105, 274, { align: 'center' })
+  pdf.setFontSize(10)
+  pdf.text(textValue(findField(fields, 'Lecturer Signature')), 190, 272, {
+    align: 'right',
+    maxWidth: 70,
+  })
 }
 
 export const resolvePdfImageFit = ({
@@ -191,10 +286,12 @@ const drawQuestion = async (
   if (block.type === 'image_question') {
     const asset = assets[block.assetId]
     if (asset?.path) {
+      const imageSource = await resolveImageDataUrl(asset.path).catch(() => asset.path)
+
       const sourceDimensions =
         asset.width && asset.height
           ? { width: asset.width, height: asset.height }
-          : await getImageDimensionsFromDataUrl(asset.path).catch(
+          : await getImageDimensionsFromDataUrl(imageSource).catch(
               () => ({ width: 1600, height: 900 }),
             )
 
@@ -212,9 +309,9 @@ const drawQuestion = async (
       })
 
       const x = margin + (contentWidth - fitted.width) / 2
-      const format = getImageTypeFromDataUrl(asset.path) === 'jpg' ? 'JPEG' : 'PNG'
+      const format = getImageTypeFromDataUrl(imageSource) === 'jpg' ? 'JPEG' : 'PNG'
       ensureSpace(context, fitted.height + 6)
-      context.pdf.addImage(asset.path, format, x, context.y, fitted.width, fitted.height)
+      context.pdf.addImage(imageSource, format, x, context.y, fitted.width, fitted.height)
       context.y += fitted.height + 6
     }
 
@@ -267,8 +364,21 @@ export const buildExamPdfDocument = async (
 ) => {
   const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
   const context = createContext(pdf)
+  const isShaqlawaCover = project.settings?.templatePresetId === 'shaqlawa_linux_gui'
 
-  const headerFields = project.templateFields ? project.templateFields.filter(f => f.section === 'header') : []
+  const coverImageField = project.templateFields
+    ? project.templateFields.find(
+        (field) =>
+          field.section === 'header' &&
+          field.label === 'Cover Page Image' &&
+          isImageTemplateValue(field.value),
+      )
+    : undefined
+  const headerFields = project.templateFields
+    ? project.templateFields.filter(
+        (field) => field.section === 'header' && field.label !== 'Cover Page Image',
+      )
+    : []
   const footerFields = project.templateFields ? project.templateFields.filter(f => f.section === 'footer') : []
 
   pdf.setFont('times', 'bold')
@@ -280,6 +390,19 @@ export const buildExamPdfDocument = async (
 
   if (mode === 'answer_key') {
     drawWrapped({ context, text: 'ANSWER KEY', lineHeight: 7 })
+  }
+
+  if (isShaqlawaCover) {
+    await drawShaqlawaCoverPage(pdf, project.templateFields)
+    startNewPage(context)
+  } else if (coverImageField?.value) {
+    await drawTemplateImage(
+      context,
+      coverImageField.value,
+      contentWidth,
+      contentBottom - margin,
+    )
+    startNewPage(context)
   }
 
   if (headerFields.length > 0) {
