@@ -11,11 +11,14 @@ How PaperMint is versioned, built, signed, and updated. For the April 2026 packa
 
 - Updater signing uses a minisign keypair, independent of Apple code signing.
 - Private key: `~/.tauri/papermint.key` (never committed). Keep a backup — if it is lost, already-installed apps cannot verify future updates, and users must install the next release manually.
-- Public key: embedded in `src-tauri/tauri.conf.json` under `plugins.updater.pubkey`.
-- GitHub repo secrets (already set):
-  - `TAURI_SIGNING_PRIVATE_KEY` — contents of the private key file
-  - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — empty (key generated without a password)
-- Regenerate only as a last resort: `npm run tauri -- signer generate -w ~/.tauri/papermint.key`, then update the pubkey in `tauri.conf.json` and the secrets.
+- Password: `~/.tauri/papermint.key.password` (chmod 600), same backup rules as the key. Losing either file means no future release can be signed.
+- Public key: embedded in `src-tauri/tauri.conf.json` under `plugins.updater.pubkey`; the canonical copy is `~/.tauri/papermint.key.pub`.
+- GitHub repo secrets:
+  - `TAURI_SIGNING_PRIVATE_KEY` — set via `gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/papermint.key`
+  - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — set via `gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD < ~/.tauri/papermint.key.password`
+- Rotating the keypair is free only until the first public release; afterwards installed apps have the old pubkey baked in and rotation requires a manual-install bridge release.
+  - Generate: `./node_modules/.bin/tauri signer generate --ci -w ~/.tauri/papermint.key -p "$(cat ~/.tauri/papermint.key.password)" -f`
+  - Never run key generation via `npm run` — npm echoes the expanded command line, including the password, into terminal logs.
 
 ## Cutting a release
 
