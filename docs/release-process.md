@@ -20,6 +20,10 @@ How PaperMint is versioned, built, signed, and updated. For the April 2026 packa
   - Generate: `./node_modules/.bin/tauri signer generate --ci -w ~/.tauri/papermint.key -p "$(cat ~/.tauri/papermint.key.password)" -f`
   - Never run key generation via `npm run` — npm echoes the expanded command line, including the password, into terminal logs.
 
+### macOS app signature (interim)
+
+- `bundle.macOS.signingIdentity` is `"-"` (ad-hoc) in `src-tauri/tauri.conf.json`. Without it the bundle carries only the linker signature: `codesign --verify` fails and quarantined browser downloads are treated as broken. Ad-hoc signing makes the bundle verify so macOS offers the standard Privacy & Security → "Open Anyway" approval for this unnotarized beta.
+
 ## Cutting a release
 
 1. Bump the version in `src-tauri/tauri.conf.json`, `package.json`, `src-tauri/Cargo.toml`.
@@ -27,7 +31,7 @@ How PaperMint is versioned, built, signed, and updated. For the April 2026 packa
 3. Tag and push: `git tag v0.9.0 && git push origin v0.9.0` (or run the Release workflow manually via `workflow_dispatch`).
 4. `.github/workflows/release.yml` builds the macOS app + DMG on `macos-latest`, signs updater artifacts, attaches `latest.json`, and creates a **draft** GitHub release.
 5. Review the draft, then publish it. The updater endpoint is `releases/latest/download/latest.json`, which only serves **published** releases — drafts are invisible to the updater by design.
-6. Install instructions for the unsigned beta (until notarization exists): download the DMG, drag to Applications, then first launch via right-click → Open → confirm.
+6. Install instructions for the unsigned beta (until notarization exists): download the DMG, drag to Applications, then on first launch approve it via System Settings → Privacy & Security → "Open Anyway" (terminal fallback: `xattr -d com.apple.quarantine /Applications/PaperMint.app`).
 
 ## How updates work in the app
 
@@ -37,5 +41,5 @@ How PaperMint is versioned, built, signed, and updated. For the April 2026 packa
 
 ## When an Apple Developer account exists (later)
 
-- Add notarization secrets (`APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`) and remove the right-click-open install note.
+- Replace the ad-hoc signature: set `APPLE_SIGNING_IDENTITY` to a Developer ID Application certificate, add `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, and notarization secrets (`APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`), and remove the Gatekeeper install note.
 - The updater signature already covers update payloads; notarization only affects first-install trust.

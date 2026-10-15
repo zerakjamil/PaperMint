@@ -33,7 +33,15 @@ jobs:
           releaseBody: |
             macOS build (Apple Silicon). Download the .dmg below.
 
-            Unsigned build: on first launch, right-click the app and choose Open, then confirm.
+            This beta is not notarized by Apple. First launch:
+            1. Open the .dmg and drag PaperMint into Applications.
+            2. Open PaperMint once; macOS blocks it with a security notice. Dismiss it.
+            3. Go to System Settings -> Privacy & Security, scroll to the bottom, click "Open Anyway" next to PaperMint, and confirm.
+            4. Open PaperMint again. It starts normally from now on.
+
+            Terminal alternative: xattr -d com.apple.quarantine /Applications/PaperMint.app
+
+            PaperMint runs fully offline; your exam files never leave your Mac.
           releaseDraft: true
           prerelease: false
           includeUpdaterJson: true
