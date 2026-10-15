@@ -11,6 +11,7 @@ import type {
   TemplateField,
   TemplateFieldStyle,
   TrueFalseBlock,
+  PageLayout,
 } from '@/types/exam'
 
 const DOCX_MIME =
@@ -34,15 +35,57 @@ type DocxImportImage = {
   altText?: string
 }
 
+type DocxImportSpacing = {
+  beforePt?: number
+  afterPt?: number
+  lineSpacing?: number
+  lineSpacingRule?: string
+}
+
+type DocxImportBorder = {
+  top: boolean
+  bottom: boolean
+  left: boolean
+  right: boolean
+  colorHex?: string
+  style?: string
+  widthPt?: number
+}
+
+type DocxImportTabStop = {
+  positionMm: number
+  alignment?: string
+}
+
 type DocxImportedBlock = {
   source: string
   text: string
   alignment?: string
   segments: DocxImportSegment[]
   images: DocxImportImage[]
+  spacing?: DocxImportSpacing
+  border?: DocxImportBorder
+  backgroundColor?: string
+  tabStops?: DocxImportTabStop[]
+  blockType?: string
+  children?: DocxImportedBlock[]
+}
+
+type DocxPageLayout = {
+  headerHeightMm?: number
+  footerHeightMm?: number
+  pageWidthMm?: number
+  pageHeightMm?: number
+  marginTopMm?: number
+  marginBottomMm?: number
+  marginLeftMm?: number
+  marginRightMm?: number
+  differentFirstPage: boolean
+  differentOddEven: boolean
 }
 
 export type DocxImportPayload = {
+  pageLayout?: DocxPageLayout
   headers: DocxImportedBlock[]
   footers: DocxImportedBlock[]
   body: DocxImportedBlock[]
@@ -54,10 +97,10 @@ export type DocxImportedProject = {
   warnings: string[]
 }
 
-const tokenPattern = /\{\{\s*([^{}]+?)\s*\}\}|\[\s*([^\[\]]+?)\s*\]|<<\s*([^<>]+?)\s*>>/g
+const tokenPattern = /\{\{\s*([^{}]+?)\s*\}\}|\[\s*([^[\]]+?)\s*]|<<\s*([^<>]+?)\s*>>/g
 
-const choiceLinePattern = /^\s*([A-F])[\).:-]\s*(.+)$/i
-const numberedQuestionPattern = /^\s*(?:q(?:uestion)?\s*)?(\d+)[\).:-]\s*(.+)$/i
+const choiceLinePattern = /^\s*([A-F])[).:-]\s*(.+)$/i
+const numberedQuestionPattern = /^\s*(?:q(?:uestion)?\s*)?(\d+)[).:-]\s*(.+)$/i
 
 const normalizeColor = (value?: string) => {
   if (!value) {
@@ -102,6 +145,32 @@ const styleFromBlock = (block: DocxImportedBlock): TemplateFieldStyle | undefine
     fontSizePt: dominantSegment?.fontSizePt,
     fontFamily: dominantSegment?.fontFamily,
     colorHex: normalizeColor(dominantSegment?.colorHex),
+    paragraphSpacing: block.spacing
+      ? {
+          beforePt: block.spacing.beforePt,
+          afterPt: block.spacing.afterPt,
+          lineSpacing: block.spacing.lineSpacing,
+          lineSpacingRule: block.spacing.lineSpacingRule as 'auto' | 'exact' | 'atLeast' | undefined,
+        }
+      : undefined,
+    border: block.border
+      ? {
+          top: block.border.top,
+          bottom: block.border.bottom,
+          left: block.border.left,
+          right: block.border.right,
+          colorHex: block.border.colorHex,
+          style: (block.border.style as 'single' | 'double' | 'dashed' | 'dotted') ?? undefined,
+          widthPt: block.border.widthPt,
+        }
+      : undefined,
+    backgroundColor: block.backgroundColor,
+    tabStops: block.tabStops?.length
+      ? block.tabStops.map((ts) => ({
+          positionMm: ts.positionMm,
+          alignment: ts.alignment as 'left' | 'center' | 'right' | undefined,
+        }))
+      : undefined,
   }
 
   return Object.values(style).some((value) => value !== undefined) ? style : undefined
@@ -172,6 +241,14 @@ const mapTextBlockToFields = (
   index: number,
 ): TemplateField[] => {
   const fields: TemplateField[] = []
+
+  if (block.blockType === 'table' && block.children) {
+    for (const row of block.children) {
+      fields.push(...mapTextBlockToFields(row, section, index))
+    }
+    return fields
+  }
+
   const text = block.text.trim()
   const style = styleFromBlock(block)
 
@@ -290,7 +367,7 @@ const questionPromptFromLine = (line: string) => {
 }
 
 const normalizeQuestionPrompt = (value: string) =>
-  value.replace(/\s+/g, ' ').replace(/^[\-•\s]+/, '').trim()
+  value.replace(/\s+/g, ' ').replace(/^[-•\s]+/, '').trim()
 
 const isTrueFalsePrompt = (value: string) =>
   /\btrue\s*\/\s*false\b|\btrue\s+or\s+false\b/i.test(value)
@@ -463,6 +540,21 @@ export const mapDocxImportToProject = (
     warnings.push('No editable header/footer fields were extracted.')
   }
 
+  const pageLayout: PageLayout | undefined = imported.pageLayout
+    ? {
+        headerHeightMm: imported.pageLayout.headerHeightMm,
+        footerHeightMm: imported.pageLayout.footerHeightMm,
+        pageWidthMm: imported.pageLayout.pageWidthMm,
+        pageHeightMm: imported.pageLayout.pageHeightMm,
+        marginTopMm: imported.pageLayout.marginTopMm,
+        marginBottomMm: imported.pageLayout.marginBottomMm,
+        marginLeftMm: imported.pageLayout.marginLeftMm,
+        marginRightMm: imported.pageLayout.marginRightMm,
+        differentFirstPage: imported.pageLayout.differentFirstPage,
+        differentOddEven: imported.pageLayout.differentOddEven,
+      }
+    : undefined
+
   const project: ExamProject = {
     id: newId(),
     version: 1,
@@ -471,6 +563,9 @@ export const mapDocxImportToProject = (
     assets: {},
     createdAt: now,
     updatedAt: now,
+    settings: {
+      pageLayout,
+    },
   }
 
   if (sourceName.toLowerCase().endsWith('.docx') && project.sections[0]?.items.length === 0) {

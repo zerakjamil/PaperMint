@@ -16,9 +16,14 @@ type Props = {
 const blockTitle = {
   essay: 'Essay Block',
   mcq: 'Multiple Choice Block',
+  multi_select_mcq: 'Multi-Select MCQ Block',
   true_false: 'True / False Block',
   fill_blank: 'Fill Blank Block',
+  short_answer: 'Short Answer Block',
   image_question: 'Image Question Block',
+  matching: 'Matching Block',
+  ordering: 'Ordering Block',
+  numeric: 'Numeric Block',
 }
 
 const readImageFromInput = async (
@@ -365,6 +370,310 @@ export const RightPropertiesPanel = ({
               <option value="medium">Medium</option>
               <option value="large">Large</option>
             </select>
+          </label>
+        </Panel>
+      ) : null}
+
+      {block.type === 'multi_select_mcq' ? (
+        <Panel title="Multi-Select Options">
+          <div className="space-y-2">
+            {block.options.map((option, optionIndex) => (
+              <div key={`${block.id}-option-${optionIndex}`} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={block.correctIndices?.includes(optionIndex) ?? false}
+                  onChange={(event) =>
+                    onUpdate(block.id, (value) => {
+                      if (value.type !== 'multi_select_mcq') return value
+                      const indices = [...(value.correctIndices ?? [])]
+                      if (event.target.checked) {
+                        if (!indices.includes(optionIndex)) indices.push(optionIndex)
+                      } else {
+                        const pos = indices.indexOf(optionIndex)
+                        if (pos >= 0) indices.splice(pos, 1)
+                      }
+                      return { ...value, correctIndices: indices }
+                    })
+                  }
+                />
+                <input
+                  value={option}
+                  onChange={(event) =>
+                    onUpdate(block.id, (value) => {
+                      if (value.type !== 'multi_select_mcq') return value
+                      const options = [...value.options]
+                      options[optionIndex] = event.target.value
+                      return { ...value, options }
+                    })
+                  }
+                  className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    onUpdate(block.id, (value) => {
+                      if (value.type !== 'multi_select_mcq' || value.options.length <= 3) return value
+                      const options = value.options.filter((_, idx) => idx !== optionIndex)
+                      const correctIndices = value.correctIndices
+                        ?.filter((i) => i !== optionIndex)
+                        .map((i) => (i > optionIndex ? i - 1 : i))
+                      return { ...value, options, correctIndices }
+                    })
+                  }
+                  className="rounded border border-rose-200 px-2 py-1 text-xs text-rose-700"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3">
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={() =>
+                onUpdate(block.id, (value) => {
+                  if (value.type !== 'multi_select_mcq' || value.options.length >= 8) return value
+                  return {
+                    ...value,
+                    options: [...value.options, `Option ${String.fromCharCode(65 + value.options.length)}`],
+                  }
+                })
+              }
+            >
+              Add Option
+            </Button>
+          </div>
+        </Panel>
+      ) : null}
+
+      {block.type === 'short_answer' ? (
+        <Panel title="Short Answer Settings">
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Answer Lines</span>
+            <input
+              type="number"
+              min={1}
+              max={10}
+              value={block.answerLines ?? 3}
+              onChange={(event) =>
+                onUpdate(block.id, (value) => ({
+                  ...value,
+                  answerLines: Number.parseInt(event.target.value, 10),
+                }))
+              }
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="mt-2 flex flex-col gap-1">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Max Words</span>
+            <input
+              type="number"
+              min={0}
+              value={block.maxWords ?? ''}
+              onChange={(event) =>
+                onUpdate(block.id, (value) => ({
+                  ...value,
+                  maxWords: event.target.value === '' ? undefined : Number.parseInt(event.target.value, 10),
+                }))
+              }
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            />
+          </label>
+          <InputField
+            label="Suggested Answer"
+            value={block.suggestedAnswer ?? ''}
+            textarea
+            rows={3}
+            onChange={(event) =>
+              onUpdate(block.id, (value) => {
+                if (value.type !== 'short_answer') return value
+                return { ...value, suggestedAnswer: event.target.value }
+              })
+            }
+          />
+        </Panel>
+      ) : null}
+
+      {block.type === 'matching' ? (
+        <Panel title="Matching Settings">
+          <div className="space-y-2">
+            {block.leftItems.map((leftItem, i) => (
+              <div key={`${block.id}-match-${i}`} className="flex items-center gap-2">
+                <span className="text-xs w-8">{String.fromCharCode(65 + i)}.</span>
+                <input
+                  value={leftItem}
+                  onChange={(event) =>
+                    onUpdate(block.id, (value) => {
+                      if (value.type !== 'matching') return value
+                      const leftItems = [...value.leftItems]
+                      leftItems[i] = event.target.value
+                      return { ...value, leftItems }
+                    })
+                  }
+                  className="flex-1 rounded-md border border-slate-300 px-2 py-1 text-sm"
+                  placeholder="Left item"
+                />
+                <span className="text-xs">→</span>
+                <input
+                  value={i < block.rightItems.length ? block.rightItems[i] : ''}
+                  onChange={(event) =>
+                    onUpdate(block.id, (value) => {
+                      if (value.type !== 'matching') return value
+                      const rightItems = [...value.rightItems]
+                      rightItems[i] = event.target.value
+                      return { ...value, rightItems }
+                    })
+                  }
+                  className="flex-1 rounded-md border border-slate-300 px-2 py-1 text-sm"
+                  placeholder="Right item"
+                />
+                {block.leftItems.length > 2 ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onUpdate(block.id, (value) => {
+                        if (value.type !== 'matching') return value
+                        return {
+                          ...value,
+                          leftItems: value.leftItems.filter((_, idx) => idx !== i),
+                          rightItems: value.rightItems.filter((_, idx) => idx !== i),
+                        }
+                      })
+                    }
+                    className="rounded border border-rose-200 px-2 py-1 text-xs text-rose-700"
+                  >
+                    X
+                  </button>
+                ) : null}
+              </div>
+            ))}
+          </div>
+          <div className="mt-3">
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={() =>
+                onUpdate(block.id, (value) => {
+                  if (value.type !== 'matching') return value
+                  return {
+                    ...value,
+                    leftItems: [...value.leftItems, `Item ${value.leftItems.length + 1}`],
+                    rightItems: [...value.rightItems, `Match ${value.rightItems.length + 1}`],
+                  }
+                })
+              }
+            >
+              Add Pair
+            </Button>
+          </div>
+        </Panel>
+      ) : null}
+
+      {block.type === 'ordering' ? (
+        <Panel title="Ordering Items">
+          <div className="space-y-2">
+            {block.items.map((item, i) => (
+              <div key={`${block.id}-order-${i}`} className="flex items-center gap-2">
+                <span className="text-xs w-6">{i + 1}.</span>
+                <input
+                  value={item}
+                  onChange={(event) =>
+                    onUpdate(block.id, (value) => {
+                      if (value.type !== 'ordering') return value
+                      const items = [...value.items]
+                      items[i] = event.target.value
+                      return { ...value, items }
+                    })
+                  }
+                  className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+                />
+                {block.items.length > 2 ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onUpdate(block.id, (value) => {
+                        if (value.type !== 'ordering') return value
+                        return { ...value, items: value.items.filter((_, idx) => idx !== i) }
+                      })
+                    }
+                    className="rounded border border-rose-200 px-2 py-1 text-xs text-rose-700"
+                  >
+                    X
+                  </button>
+                ) : null}
+              </div>
+            ))}
+          </div>
+          <div className="mt-3">
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={() =>
+                onUpdate(block.id, (value) => {
+                  if (value.type !== 'ordering') return value
+                  return {
+                    ...value,
+                    items: [...value.items, `Step ${value.items.length + 1}`],
+                  }
+                })
+              }
+            >
+              Add Step
+            </Button>
+          </div>
+        </Panel>
+      ) : null}
+
+      {block.type === 'numeric' ? (
+        <Panel title="Numeric Answer Settings">
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Correct Answer</span>
+            <input
+              type="number"
+              step="any"
+              value={block.correctAnswer ?? ''}
+              onChange={(event) =>
+                onUpdate(block.id, (value) => {
+                  if (value.type !== 'numeric') return value
+                  return {
+                    ...value,
+                    correctAnswer: event.target.value === '' ? undefined : Number.parseFloat(event.target.value),
+                  }
+                })
+              }
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="mt-2 flex flex-col gap-1">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tolerance</span>
+            <input
+              type="number"
+              step="0.01"
+              value={block.tolerance ?? 0.01}
+              onChange={(event) =>
+                onUpdate(block.id, (value) => {
+                  if (value.type !== 'numeric') return value
+                  return { ...value, tolerance: Number.parseFloat(event.target.value) || 0.01 }
+                })
+              }
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="mt-2 flex flex-col gap-1">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Unit (optional)</span>
+            <input
+              type="text"
+              value={block.unit ?? ''}
+              onChange={(event) =>
+                onUpdate(block.id, (value) => {
+                  if (value.type !== 'numeric') return value
+                  return { ...value, unit: event.target.value || undefined }
+                })
+              }
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              placeholder="e.g. m/s, kg, °C"
+            />
           </label>
         </Panel>
       ) : null}

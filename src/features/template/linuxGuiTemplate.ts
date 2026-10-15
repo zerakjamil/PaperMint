@@ -24,3 +24,26 @@ export const createShaqlawaLinuxGuiProject = (): ExamProject => {
 
   return applyTemplatePreset(baseProject, 'shaqlawa_linux_gui')
 }
+
+export const createShaqlawaBlankProject = (): ExamProject => {
+  const now = new Date().toISOString()
+
+  const baseProject: ExamProject = {
+    id: newId(),
+    version: 1,
+    projectVersion: 1,
+    versionHistory: [],
+    settings: {
+      templatePresetId: 'shaqlawa_blank',
+      targetTotalMarks: 60,
+      numberingMode: 'global',
+    },
+    templateFields: [],
+    sections: [],
+    assets: {},
+    createdAt: now,
+    updatedAt: now,
+  }
+
+  return applyTemplatePreset(baseProject, 'shaqlawa_blank')
+}

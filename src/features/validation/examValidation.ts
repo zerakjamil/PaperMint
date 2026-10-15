@@ -73,6 +73,49 @@ const questionWarnings = (project: ExamProject): ValidationWarning[] => {
         })
       }
 
+      if (block.type === 'multi_select_mcq') {
+        block.options.forEach((option, optionIndex) => {
+          if (option.trim().length === 0) {
+            warnings.push({
+              id: `empty-option-${block.id}-${optionIndex}`,
+              level: 'warning',
+              message: `${section.title || 'Section'} Q${index + 1} option ${String.fromCharCode(65 + optionIndex)} empty.`,
+              target: { kind: 'block', blockId: block.id, sectionId: section.id },
+            })
+          }
+        })
+        if (!block.correctIndices || block.correctIndices.length === 0) {
+          warnings.push({
+            id: `missing-correct-${block.id}`,
+            level: 'warning',
+            message: `${section.title || 'Section'} Q${index + 1} multi-select has no correct option selected.`,
+            target: { kind: 'block', blockId: block.id, sectionId: section.id },
+          })
+        }
+      }
+
+      if (block.type === 'matching') {
+        if (block.leftItems.some((item) => item.trim().length === 0)) {
+          warnings.push({
+            id: `empty-match-${block.id}`,
+            level: 'warning',
+            message: `${section.title || 'Section'} Q${index + 1} matching has empty items.`,
+            target: { kind: 'block', blockId: block.id, sectionId: section.id },
+          })
+        }
+      }
+
+      if (block.type === 'ordering') {
+        if (block.items.some((item) => item.trim().length === 0)) {
+          warnings.push({
+            id: `empty-order-${block.id}`,
+            level: 'warning',
+            message: `${section.title || 'Section'} Q${index + 1} ordering has empty items.`,
+            target: { kind: 'block', blockId: block.id, sectionId: section.id },
+          })
+        }
+      }
+
       if (block.type === 'image_question') {
         const asset = project.assets[block.assetId]
         if (!asset?.path) {

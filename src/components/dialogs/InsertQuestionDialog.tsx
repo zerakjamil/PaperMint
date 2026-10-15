@@ -22,6 +22,11 @@ const options: Array<{ type: BlockType; label: string; description: string }> = 
     description: 'Prompt with 2 to 6 options and optional answer key.',
   },
   {
+    type: 'multi_select_mcq',
+    label: 'Multi-Select MCQ',
+    description: 'Multiple correct answers with checkboxes.',
+  },
+  {
     type: 'true_false',
     label: 'True / False',
     description: 'Prompt with boolean answer metadata.',
@@ -32,9 +37,29 @@ const options: Array<{ type: BlockType; label: string; description: string }> = 
     description: 'Prompt with blank answers metadata.',
   },
   {
+    type: 'short_answer',
+    label: 'Short Answer',
+    description: 'Brief response with word limit and suggested answer.',
+  },
+  {
     type: 'image_question',
     label: 'Image Question',
     description: 'Prompt with image, caption, and layout controls.',
+  },
+  {
+    type: 'matching',
+    label: 'Matching',
+    description: 'Match left items with right items.',
+  },
+  {
+    type: 'ordering',
+    label: 'Ordering / Sequencing',
+    description: 'Arrange items in the correct order.',
+  },
+  {
+    type: 'numeric',
+    label: 'Numeric Answer',
+    description: 'Single numeric answer with tolerance and unit.',
   },
 ]
 

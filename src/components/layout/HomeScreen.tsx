@@ -3,10 +3,11 @@ import { Button } from '@/components/ui/Button'
 type Props = {
   onNew: () => void
   onNewLinuxGuiTemplate: () => void
+  onNewShaqlawaBlank: () => void
   onOpen: () => void
 }
 
-export const HomeScreen = ({ onNew, onNewLinuxGuiTemplate, onOpen }: Props) => (
+export const HomeScreen = ({ onNew, onNewLinuxGuiTemplate, onNewShaqlawaBlank, onOpen }: Props) => (
   <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,#f6f2ea,transparent_60%),linear-gradient(145deg,#f7f6f3,#ebe8df)] p-6">
     <div className="w-full max-w-3xl rounded-3xl border border-stone-300/70 bg-white/80 p-8 shadow-2xl backdrop-blur">
       <p className="text-xs uppercase tracking-[0.28em] text-stone-500">Offline First</p>
@@ -20,7 +21,10 @@ export const HomeScreen = ({ onNew, onNewLinuxGuiTemplate, onOpen }: Props) => (
           New Exam
         </Button>
         <Button className="px-5 py-3" variant="secondary" onClick={onNewLinuxGuiTemplate}>
-          Linux GUI Template
+          Shaqlawa Linux GUI
+        </Button>
+        <Button className="px-5 py-3" variant="secondary" onClick={onNewShaqlawaBlank}>
+          Shaqlawa Blank
         </Button>
         <Button className="px-5 py-3" variant="secondary" onClick={onOpen}>
           Open Project

@@ -18,6 +18,7 @@ import type {
 } from '@/types/exam'
 import { InputField } from '@/components/ui/InputField'
 import { Panel } from '@/components/ui/Panel'
+import { CoverEditorPanel } from '@/components/cover/CoverEditorPanel'
 
 type TemplateFieldUpdates = Partial<
   Pick<TemplateField, 'label' | 'value' | 'displayMode' | 'style'>
@@ -672,41 +673,55 @@ export const LeftSidebar = ({
       </div>
     </Panel>
 
-    <Panel title="Template Fields (Header)">
-      <div className="space-y-4">
-        {templateFields
-          .filter((f) => f.section === 'header')
-          .map((field) => (
-            <TemplateFieldEditor
-              key={field.id}
-              field={field}
-              isFooter={false}
-              highlighted={field.id === highlightedTemplateFieldId}
-              onTemplateFieldUpdate={onTemplateFieldUpdate}
-              onTemplateFieldRemove={onTemplateFieldRemove}
-            />
-          ))}
-        <button type="button" onClick={() => onTemplateFieldAdd('header')} className="text-xs text-blue-600 font-medium">+ Add Header Field</button>
-      </div>
-    </Panel>
+    {templatePresetId === 'shaqlawa_linux_gui' || templatePresetId === 'shaqlawa_blank' ? (
+      <Panel title="Cover / هێڵی سەرەوە">
+        <CoverEditorPanel fields={templateFields} onUpdateField={onTemplateFieldUpdate} />
+      </Panel>
+    ) : (
+      <>
+        <Panel title="Template Fields (Header)">
+          <div className="space-y-4">
+            <p className="text-[10px] text-amber-600 italic">
+              Tip: Click any header text in the preview to edit it directly.
+            </p>
+            {templateFields
+              .filter((f) => f.section === 'header')
+              .map((field) => (
+                <TemplateFieldEditor
+                  key={field.id}
+                  field={field}
+                  isFooter={false}
+                  highlighted={field.id === highlightedTemplateFieldId}
+                  onTemplateFieldUpdate={onTemplateFieldUpdate}
+                  onTemplateFieldRemove={onTemplateFieldRemove}
+                />
+              ))}
+            <button type="button" onClick={() => onTemplateFieldAdd('header')} className="text-xs text-blue-600 font-medium">+ Add Header Field</button>
+          </div>
+        </Panel>
 
-    <Panel title="Template Fields (Footer)">
-      <div className="space-y-4">
-        {templateFields
-          .filter((f) => f.section === 'footer')
-          .map((field) => (
-            <TemplateFieldEditor
-              key={field.id}
-              field={field}
-              isFooter
-              highlighted={field.id === highlightedTemplateFieldId}
-              onTemplateFieldUpdate={onTemplateFieldUpdate}
-              onTemplateFieldRemove={onTemplateFieldRemove}
-            />
-          ))}
-        <button type="button" onClick={() => onTemplateFieldAdd('footer')} className="text-xs text-blue-600 font-medium">+ Add Footer Field</button>
-      </div>
-    </Panel>
+        <Panel title="Template Fields (Footer)">
+          <div className="space-y-4">
+            <p className="text-[10px] text-amber-600 italic">
+              Tip: Click any footer text in the preview to edit it directly.
+            </p>
+            {templateFields
+              .filter((f) => f.section === 'footer')
+              .map((field) => (
+                <TemplateFieldEditor
+                  key={field.id}
+                  field={field}
+                  isFooter
+                  highlighted={field.id === highlightedTemplateFieldId}
+                  onTemplateFieldUpdate={onTemplateFieldUpdate}
+                  onTemplateFieldRemove={onTemplateFieldRemove}
+                />
+              ))}
+            <button type="button" onClick={() => onTemplateFieldAdd('footer')} className="text-xs text-blue-600 font-medium">+ Add Footer Field</button>
+          </div>
+        </Panel>
+      </>
+    )}
 
     <Panel title="Question Outline">
       {selectedBlock ? (

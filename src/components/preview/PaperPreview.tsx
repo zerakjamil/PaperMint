@@ -20,6 +20,7 @@ import {
 
 import { QuestionCard } from '@/components/preview/QuestionCard'
 import { Button } from '@/components/ui/Button'
+import { InlineEditableField } from '@/components/ui/InlineEditableField'
 import { isImageSourceValue } from '@/lib/utils/exportLayout'
 import type {
   AssetMap,
@@ -47,6 +48,7 @@ type Props = {
   onReorder: (fromIndex: number, toIndex: number) => void
   onAttachImageFile: (blockId: string, file: File) => Promise<void>
   onCanvasDropImage?: (file: File, atIndex?: number) => Promise<void>
+  onTemplateFieldUpdate?: (fieldId: string, value: string) => void
 }
 
 type PositionedItem = {
@@ -94,31 +96,6 @@ const paginate = (items: PositionedItem[]) => {
   }
 
   return pages
-}
-
-const MetaLine = ({ field }: { field: TemplateField }) => {
-  const displayMode = field.displayMode ?? 'label_value'
-  const content =
-    displayMode === 'value_only'
-      ? field.value || '-'
-      : `${field.label}: ${field.value || '-'}`
-
-  return (
-    <p
-      className="text-xs leading-relaxed text-slate-700"
-      style={{
-        textAlign: field.style?.alignment,
-        fontWeight: field.style?.bold ? 700 : undefined,
-        fontStyle: field.style?.italics ? 'italic' : undefined,
-        textDecoration: field.style?.underline ? 'underline' : undefined,
-        fontSize: field.style?.fontSizePt ? `${field.style.fontSizePt}pt` : undefined,
-        fontFamily: field.style?.fontFamily,
-        color: field.style?.colorHex ? `#${field.style.colorHex}` : undefined,
-      }}
-    >
-      {content}
-    </p>
-  )
 }
 
 const InsertButton = ({ onClick }: { onClick: () => void }) => (
@@ -316,6 +293,7 @@ export const PaperPreview = ({
   onReorder,
   onAttachImageFile,
   onCanvasDropImage,
+  onTemplateFieldUpdate,
 }: Props) => {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [isCanvasDropActive, setIsCanvasDropActive] = useState(false)
@@ -467,7 +445,11 @@ export const PaperPreview = ({
                             {field.label ? <figcaption className="text-[11px] text-slate-500">{field.label}</figcaption> : null}
                           </figure>
                         ) : (
-                          <MetaLine key={field.id} field={field} />
+                          <InlineEditableField
+                            key={field.id}
+                            field={field}
+                            onUpdate={(fieldId, value) => onTemplateFieldUpdate?.(fieldId, value)}
+                          />
                         ),
                       )}
                     </div>
@@ -540,9 +522,11 @@ export const PaperPreview = ({
                             {field.label ? <span className="text-[11px] text-slate-500">{field.label}</span> : null}
                           </div>
                         ) : (
-                          <span key={field.id} className="whitespace-pre-line">
-                            <span className="font-semibold">{field.label}:</span> {field.value}
-                          </span>
+                          <InlineEditableField
+                            key={field.id}
+                            field={field}
+                            onUpdate={(fieldId, value) => onTemplateFieldUpdate?.(fieldId, value)}
+                          />
                         ),
                       )}
                     </div>

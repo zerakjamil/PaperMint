@@ -5,7 +5,12 @@ import type {
   FillBlankBlock,
   ImageQuestionBlock,
   MCQBlock,
+  MultiSelectMCQBlock,
+  MatchingBlock,
+  OrderingBlock,
+  NumericBlock,
   QuestionBlock,
+  ShortAnswerBlock,
   TrueFalseBlock,
 } from '@/types/exam'
 
@@ -31,6 +36,16 @@ export const createBlock = (type: BlockType): QuestionBlock => {
       }
       return block
     }
+    case 'multi_select_mcq': {
+      const block: MultiSelectMCQBlock = {
+        id,
+        type,
+        prompt: 'Select all correct answers.',
+        options: ['Option A', 'Option B', 'Option C', 'Option D'],
+        correctIndices: [],
+      }
+      return block
+    }
     case 'true_false': {
       const block: TrueFalseBlock = {
         id,
@@ -48,6 +63,16 @@ export const createBlock = (type: BlockType): QuestionBlock => {
       }
       return block
     }
+    case 'short_answer': {
+      const block: ShortAnswerBlock = {
+        id,
+        type,
+        prompt: 'Provide a brief answer.',
+        answerLines: 3,
+        maxWords: 100,
+      }
+      return block
+    }
     case 'image_question': {
       const block: ImageQuestionBlock = {
         id,
@@ -56,6 +81,36 @@ export const createBlock = (type: BlockType): QuestionBlock => {
         assetId: '',
         layout: 'top',
         size: 'medium',
+      }
+      return block
+    }
+    case 'matching': {
+      const block: MatchingBlock = {
+        id,
+        type,
+        prompt: 'Match the items.',
+        leftItems: ['Item A', 'Item B'],
+        rightItems: ['Match 1', 'Match 2'],
+        correctPairs: [[0, 1]],
+      }
+      return block
+    }
+    case 'ordering': {
+      const block: OrderingBlock = {
+        id,
+        type,
+        prompt: 'Arrange in the correct order.',
+        items: ['First step', 'Second step', 'Third step'],
+        correctOrder: [0, 1, 2],
+      }
+      return block
+    }
+    case 'numeric': {
+      const block: NumericBlock = {
+        id,
+        type,
+        prompt: 'Enter the numeric answer.',
+        tolerance: 0.01,
       }
       return block
     }

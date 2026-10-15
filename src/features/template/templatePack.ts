@@ -31,6 +31,7 @@ const templatePackSchema = z.object({
       'engineering_midterm',
       'medical_final',
       'shaqlawa_linux_gui',
+      'shaqlawa_blank',
     ])
     .optional(),
   templateFields: z.array(templateFieldSchema),

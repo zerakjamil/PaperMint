@@ -1,5 +1,10 @@
+import { createRoot } from 'react-dom/client'
+import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
+import { createElement } from 'react'
 
+import { CoverPagePreview } from '@/components/preview/CoverPagePreview'
+import { ExamPageHeader } from '@/components/preview/ExamPageHeader'
 import { downloadBlob } from '@/lib/file-system/projectFile'
 import {
   fitWithinBox,
@@ -39,8 +44,6 @@ const isImageTemplateValue = (value: string) => isImageSourceValue(value)
 const findField = (fields: ExamProject['templateFields'], label: string) =>
   fields.find((field) => field.label === label)
 
-const textValue = (field?: ExamProject['templateFields'][number]) => field?.value ?? ''
-
 const createContext = (pdf: jsPDF): PdfWriteContext => ({
   pdf,
   y: margin,
@@ -65,13 +68,21 @@ const drawWrapped = ({
   x = margin,
   width = contentWidth,
   lineHeight = 6,
+  spacingBefore = 0,
+  spacingAfter = 0,
 }: {
   context: PdfWriteContext
   text: string
   x?: number
   width?: number
   lineHeight?: number
+  spacingBefore?: number
+  spacingAfter?: number
 }) => {
+  if (spacingBefore > 0) {
+    ensureSpace(context, spacingBefore)
+    context.y += spacingBefore
+  }
   const lines = context.pdf.splitTextToSize(text, width) as string[]
 
   lines.forEach((line) => {
@@ -79,6 +90,11 @@ const drawWrapped = ({
     context.pdf.text(line, x, context.y)
     context.y += lineHeight
   })
+
+  if (spacingAfter > 0) {
+    ensureSpace(context, spacingAfter)
+    context.y += spacingAfter
+  }
 }
 
 const drawRule = (context: PdfWriteContext) => {
@@ -112,6 +128,33 @@ const drawTemplateImage = async (
   context.y += fitted.height + 6
 }
 
+const renderComponentToCanvas = async (element: React.ReactElement): Promise<string> => {
+  const container = document.createElement('div')
+  container.style.position = 'absolute'
+  container.style.left = '-9999px'
+  container.style.top = '-9999px'
+  document.body.appendChild(container)
+
+  const root = createRoot(container)
+  root.render(element)
+
+  // Wait for React to render and images to load
+  await new Promise((resolve) => setTimeout(resolve, 800))
+
+  const canvas = await html2canvas(container.firstElementChild as HTMLElement, {
+    scale: 2,
+    useCORS: true,
+    logging: false,
+  })
+
+  const imgData = canvas.toDataURL('image/png')
+
+  root.unmount()
+  document.body.removeChild(container)
+
+  return imgData
+}
+
 const drawShaqlawaCoverPageImage = async (pdf: jsPDF, fields: ExamProject['templateFields']) => {
   const coverImageField = findField(fields, 'Cover Page Image')
 
@@ -122,87 +165,8 @@ const drawShaqlawaCoverPageImage = async (pdf: jsPDF, fields: ExamProject['templ
     return
   }
 
-  const topStripLeft = textValue(findField(fields, 'Top Strip Left'))
-  const topStripRight = textValue(findField(fields, 'Top Strip Right'))
-  const logoField = findField(fields, 'Institution Logo')
-
-  pdf.setFont('times', 'normal')
-  pdf.setDrawColor(100)
-  pdf.setLineWidth(0.6)
-
-  pdf.rect(10, 10, 190, 277)
-  pdf.rect(14, 14, 182, 14)
-  pdf.setFontSize(9)
-  pdf.text(topStripLeft, 17, 23, { align: 'left' })
-  pdf.text(topStripRight, 190, 23, { align: 'right' })
-
-  pdf.rect(14, 30, 182, 55)
-  pdf.rect(14, 30, 56, 55)
-  pdf.rect(74, 30, 44, 55)
-  pdf.rect(122, 30, 74, 55)
-
-  pdf.setFontSize(20)
-  pdf.text(textValue(findField(fields, 'Cover Left Metadata')), 22, 56, { align: 'left' })
-
-  if (logoField?.value) {
-    const imageSource = await resolveImageDataUrl(logoField.value)
-    const format = getImageTypeFromDataUrl(imageSource) === 'jpg' ? 'JPEG' : 'PNG'
-    pdf.addImage(imageSource, format, 84, 38, 24, 24)
-  }
-
-  pdf.setFontSize(19)
-  pdf.text(textValue(findField(fields, 'Session Banner')), 96, 60, { align: 'center' })
-
-  pdf.setFontSize(11)
-  pdf.text(textValue(findField(fields, 'Institution Name (Kurdish)')), 190, 43, {
-    align: 'right',
-    maxWidth: 68,
-  })
-  pdf.text(textValue(findField(fields, 'Institution Name (English)')), 190, 72, {
-    align: 'right',
-    maxWidth: 68,
-  })
-  pdf.text(textValue(findField(fields, 'Course Metadata')), 190, 85, {
-    align: 'right',
-    maxWidth: 68,
-  })
-
-  pdf.rect(14, 89, 182, 13)
-  pdf.rect(14, 89, 150, 13)
-  pdf.rect(168, 89, 28, 13)
-  pdf.setFontSize(9)
-  pdf.text(textValue(findField(fields, 'Student Serial Label')), 182, 98, {
-    align: 'center',
-    maxWidth: 20,
-  })
-
-  pdf.rect(14, 106, 182, 103)
-  pdf.rect(14, 106, 124, 12)
-  pdf.rect(138, 106, 26, 12)
-  pdf.rect(164, 106, 32, 12)
-  pdf.rect(14, 118, 124, 91)
-  pdf.rect(138, 118, 26, 91)
-  pdf.rect(164, 118, 32, 91)
-  pdf.text('كۆی گشتی نمرهكە', 78, 114, { align: 'center' })
-  pdf.text('واژووی وردبین', 151, 114, { align: 'center' })
-  pdf.text('واژووی مامۆستا', 180, 114, { align: 'center' })
-  pdf.setFontSize(34)
-  pdf.text('60', 76, 170, { align: 'center' })
-  pdf.setFontSize(12)
-  pdf.text('پ1\nپ2\nپ3\nپ4\nپ5\nپ6\nكۆ', 180, 133, { align: 'center', maxWidth: 20 })
-
-  pdf.rect(14, 215, 182, 47)
-  pdf.setFontSize(10)
-  pdf.text(textValue(findField(fields, 'Cover Instructions')), 18, 222, { maxWidth: 172 })
-
-  pdf.rect(14, 266, 182, 14)
-  pdf.setFontSize(13)
-  pdf.text(textValue(findField(fields, 'Footer Blessing')), 105, 274, { align: 'center' })
-  pdf.setFontSize(10)
-  pdf.text(textValue(findField(fields, 'Lecturer Signature')), 190, 272, {
-    align: 'right',
-    maxWidth: 70,
-  })
+  const imgData = await renderComponentToCanvas(createElement(CoverPagePreview, { fields }))
+  pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight)
 }
 
 export const resolvePdfImageFit = ({
@@ -257,6 +221,23 @@ const drawQuestion = async (
     })
   }
 
+  if (block.type === 'multi_select_mcq') {
+    drawWrapped({
+      context,
+      text: '(Select all that apply)',
+      x: margin + 5,
+      lineHeight: 5,
+    })
+    block.options.forEach((option, optionIndex) => {
+      drawWrapped({
+        context,
+        text: `${String.fromCharCode(65 + optionIndex)}. ${option || 'Option'}`,
+        x: margin + 5,
+        lineHeight: 6,
+      })
+    })
+  }
+
   if (block.type === 'true_false') {
     drawWrapped({
       context,
@@ -281,6 +262,15 @@ const drawQuestion = async (
     })
   }
 
+  if (block.type === 'short_answer') {
+    const lines = block.answerLines ?? 3
+    for (let i = 0; i < lines; i += 1) {
+      ensureSpace(context, 8)
+      context.pdf.line(margin + 5, context.y + 2, pageWidth - margin, context.y + 2)
+      context.y += 7
+    }
+  }
+
   if (block.type === 'essay') {
     const lines = block.answerLines ?? 4
     for (let i = 0; i < lines; i += 1) {
@@ -288,6 +278,46 @@ const drawQuestion = async (
       context.pdf.line(margin + 5, context.y + 2, pageWidth - margin, context.y + 2)
       context.y += 7
     }
+  }
+
+  if (block.type === 'matching') {
+    const leftWidth = (contentWidth - 20) / 2
+    block.leftItems.forEach((leftItem, i) => {
+      ensureSpace(context, 8)
+      const text = `${String.fromCharCode(65 + i)}. ${leftItem}`
+      context.pdf.text(text, margin + 5, context.y)
+      if (i < block.rightItems.length) {
+        context.pdf.text(block.rightItems[i], margin + 5 + leftWidth + 10, context.y)
+      }
+      context.y += 7
+    })
+    if (mode === 'student') {
+      for (let i = 0; i < block.leftItems.length; i += 1) {
+        ensureSpace(context, 7)
+        context.pdf.text(`______`, margin + 5 + leftWidth + 5, context.y - 7 - i * 7 + 1)
+      }
+    }
+  }
+
+  if (block.type === 'ordering') {
+    block.items.forEach((item, i) => {
+      drawWrapped({
+        context,
+        text: `${i + 1}. ______  ${item}`,
+        x: margin + 5,
+        lineHeight: 6,
+      })
+    })
+  }
+
+  if (block.type === 'numeric') {
+    const answerLine = `${block.unit ? `${block.unit} ` : ''}Answer: ________`
+    drawWrapped({
+      context,
+      text: answerLine,
+      x: margin + 5,
+      lineHeight: 6,
+    })
   }
 
   if (block.type === 'image_question') {
@@ -409,7 +439,26 @@ export const buildExamPdfDocument = async (
     startNewPage(context)
   }
 
-  if (headerFields.length > 0) {
+  if (isShaqlawaCover) {
+    try {
+      const headerImgData = await renderComponentToCanvas(
+        createElement('div', { style: { width: '210mm', padding: '20px' } }, 
+          createElement(ExamPageHeader, { fields: project.templateFields })
+        )
+      )
+      pdf.addImage(headerImgData, 'PNG', 0, 0, pageWidth, 28)
+    } catch {
+      // Fallback to simple header if html2canvas fails
+      context.pdf.setFont('times', 'bold')
+      context.pdf.setFontSize(12)
+      const leftStrip = project.templateFields.find(f => f.key === 'topStripLeft')?.value || ''
+      const rightStrip = project.templateFields.find(f => f.key === 'topStripRight')?.value || ''
+      if (leftStrip || rightStrip) {
+        drawWrapped({ context, text: `${rightStrip}    ${leftStrip}`, lineHeight: 6 })
+      }
+    }
+    context.y += 15
+  } else if (headerFields.length > 0) {
       for (const field of headerFields) {
       if (isImageTemplateValue(field.value)) {
         await drawTemplateImage(context, field.value, 80, 30)
@@ -419,15 +468,28 @@ export const buildExamPdfDocument = async (
         continue
       }
 
-        drawWrapped({ context, text: `${field.label}: ${field.value}`, lineHeight: 7 })
+        const spacingBefore = field.style?.paragraphSpacing?.beforePt
+          ? field.style.paragraphSpacing.beforePt / 2
+          : 0
+        const spacingAfter = field.style?.paragraphSpacing?.afterPt
+          ? field.style.paragraphSpacing.afterPt / 2
+          : 0
+        drawWrapped({
+          context,
+          text: `${field.label}: ${field.value}`,
+          lineHeight: 7,
+          spacingBefore,
+          spacingAfter,
+        })
       }
+      context.y += 2
+      drawRule(context)
   } else {
     // fallback for tests
       drawWrapped({ context, text: 'Metadata missing', lineHeight: 7 })
+      context.y += 2
+      drawRule(context)
   }
-
-  context.y += 2
-  drawRule(context)
 
   pdf.setFontSize(12)
 
@@ -479,7 +541,13 @@ export const buildExamPdfDocument = async (
         continue
       }
 
-        drawWrapped({ context, text: `${field.label}: ${field.value}`, lineHeight: 6 })
+        const spacingBefore = field.style?.paragraphSpacing?.beforePt
+          ? field.style.paragraphSpacing.beforePt / 2
+          : 0
+        const spacingAfter = field.style?.paragraphSpacing?.afterPt
+          ? field.style.paragraphSpacing.afterPt / 2
+          : 0
+        drawWrapped({ context, text: `${field.label}: ${field.value}`, lineHeight: 6, spacingBefore, spacingAfter })
     }
   }
   

@@ -1,9 +1,14 @@
 export type BlockType =
   | 'mcq'
+  | 'multi_select_mcq'
   | 'true_false'
   | 'fill_blank'
   | 'essay'
+  | 'short_answer'
   | 'image_question'
+  | 'matching'
+  | 'ordering'
+  | 'numeric'
 
 export type NumberingMode = 'global' | 'per_section'
 export type ExportMode = 'student' | 'instructor' | 'answer_key'
@@ -13,11 +18,26 @@ export type TemplatePresetId =
   | 'engineering_midterm'
   | 'medical_final'
   | 'shaqlawa_linux_gui'
+  | 'shaqlawa_blank'
+
+export type PageLayout = {
+  headerHeightMm?: number
+  footerHeightMm?: number
+  pageWidthMm?: number
+  pageHeightMm?: number
+  marginTopMm?: number
+  marginBottomMm?: number
+  marginLeftMm?: number
+  marginRightMm?: number
+  differentFirstPage?: boolean
+  differentOddEven?: boolean
+}
 
 export type ExamSettings = {
   templatePresetId?: TemplatePresetId
   targetTotalMarks?: number
   numberingMode?: NumberingMode
+  pageLayout?: PageLayout
 }
 
 export type AssetMap = Record<
@@ -60,6 +80,18 @@ export type BaseBlock = {
   marks?: number
   instructorOnly?: boolean
   instructorNotes?: string
+  rubric?: GradingRubric
+}
+
+export type GradingRubric = {
+  criteria: GradingCriterion[]
+}
+
+export type GradingCriterion = {
+  id: string
+  label: string
+  maxPoints: number
+  description?: string
 }
 
 export type MCQBlock = BaseBlock & {
@@ -67,6 +99,13 @@ export type MCQBlock = BaseBlock & {
   prompt: string
   options: string[]
   correctIndex?: number
+}
+
+export type MultiSelectMCQBlock = BaseBlock & {
+  type: 'multi_select_mcq'
+  prompt: string
+  options: string[]
+  correctIndices?: number[]
 }
 
 export type TrueFalseBlock = BaseBlock & {
@@ -87,6 +126,14 @@ export type EssayBlock = BaseBlock & {
   answerLines?: number
 }
 
+export type ShortAnswerBlock = BaseBlock & {
+  type: 'short_answer'
+  prompt: string
+  answerLines?: number
+  maxWords?: number
+  suggestedAnswer?: string
+}
+
 export type ImageQuestionBlock = BaseBlock & {
   type: 'image_question'
   prompt: string
@@ -96,12 +143,40 @@ export type ImageQuestionBlock = BaseBlock & {
   size?: 'small' | 'medium' | 'large'
 }
 
+export type MatchingBlock = BaseBlock & {
+  type: 'matching'
+  prompt: string
+  leftItems: string[]
+  rightItems: string[]
+  correctPairs?: [number, number][]
+}
+
+export type OrderingBlock = BaseBlock & {
+  type: 'ordering'
+  prompt: string
+  items: string[]
+  correctOrder?: number[]
+}
+
+export type NumericBlock = BaseBlock & {
+  type: 'numeric'
+  prompt: string
+  correctAnswer?: number
+  tolerance?: number
+  unit?: string
+}
+
 export type QuestionBlock =
   | MCQBlock
+  | MultiSelectMCQBlock
   | TrueFalseBlock
   | FillBlankBlock
   | EssayBlock
+  | ShortAnswerBlock
   | ImageQuestionBlock
+  | MatchingBlock
+  | OrderingBlock
+  | NumericBlock
 
 export type TemplateFieldDisplayMode = 'label_value' | 'value_only'
 
@@ -120,10 +195,28 @@ export type TemplateFieldStyle = {
     height?: number
     rotationDeg?: number
   }
+  paragraphSpacing?: {
+    beforePt?: number
+    afterPt?: number
+    lineSpacing?: number
+    lineSpacingRule?: 'auto' | 'exact' | 'atLeast'
+  }
+  border?: {
+    top?: boolean
+    bottom?: boolean
+    left?: boolean
+    right?: boolean
+    colorHex?: string
+    style?: 'single' | 'double' | 'dashed' | 'dotted'
+    widthPt?: number
+  }
+  backgroundColor?: string
+  tabStops?: { positionMm: number; alignment?: 'left' | 'center' | 'right' }[]
 }
 
 export type TemplateField = {
   id: string
+  key?: string
   label: string
   value: string
   section: 'header' | 'footer'
@@ -174,4 +267,41 @@ export type ImportConflict = {
   targetId: string
   incomingId: string
   message: string
+}
+
+export type ExamVersion = {
+  id: string
+  label: string
+  randomizeQuestions?: boolean
+  randomizeOptions?: boolean
+  sections: ExamSection[]
+  answerKey?: ExamSection[]
+}
+
+export type StudentRoster = {
+  id: string
+  name: string
+  students: StudentEntry[]
+}
+
+export type StudentEntry = {
+  id: string
+  serialNumber?: string
+  fullName: string
+  group?: string
+}
+
+export type BubbleSheetConfig = {
+  id: string
+  questions: number
+  optionsPerQuestion: number
+  includeStudentId?: boolean
+  includeVersionLabel?: boolean
+}
+
+export type TemplateFieldTable = {
+  rows: number
+  columns: number
+  cells: TemplateField[][]
+  style?: TemplateFieldStyle
 }

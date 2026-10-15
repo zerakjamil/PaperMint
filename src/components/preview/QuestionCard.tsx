@@ -154,6 +154,17 @@ export const QuestionCard = ({
         </ul>
       ) : null}
 
+      {block.type === 'multi_select_mcq' ? (
+        <ul className="mt-2 space-y-1 text-sm text-slate-700">
+          {block.options.map((option, optionIndex) => (
+            <li key={`${block.id}-${optionLabel(optionIndex)}`}>
+              <span className="inline-block w-4 h-4 mr-1 border border-slate-300 rounded align-text-bottom" />{' '}
+              {optionLabel(optionIndex)}. {option}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
       {block.type === 'true_false' ? (
         <p className="mt-2 text-sm text-slate-700">Answer: {block.answer === undefined ? '____' : block.answer ? 'True' : 'False'}</p>
       ) : null}
@@ -162,12 +173,48 @@ export const QuestionCard = ({
         <p className="mt-2 text-sm text-slate-700">Answer space: ______________________</p>
       ) : null}
 
+      {block.type === 'short_answer' ? (
+        <div className="mt-2 space-y-1">
+          {Array.from({ length: block.answerLines ?? 3 }).map((_, lineIndex) => (
+            <div key={`${block.id}-line-${lineIndex}`} className="h-4 border-b border-dashed border-slate-300" />
+          ))}
+        </div>
+      ) : null}
+
       {block.type === 'essay' ? (
         <div className="mt-2 space-y-1">
           {Array.from({ length: block.answerLines ?? 4 }).map((_, lineIndex) => (
             <div key={`${block.id}-line-${lineIndex}`} className="h-4 border-b border-dashed border-slate-300" />
           ))}
         </div>
+      ) : null}
+
+      {block.type === 'matching' ? (
+        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-slate-700">
+          {block.leftItems.map((leftItem, i) => (
+            <div key={`${block.id}-match-${i}`} className="contents">
+              <div>{optionLabel(i)}. {leftItem}</div>
+              <div>{i < block.rightItems.length ? block.rightItems[i] : '______'}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {block.type === 'ordering' ? (
+        <ol className="mt-2 space-y-1 text-sm text-slate-700 list-decimal list-inside">
+          {block.items.map((item, i) => (
+            <li key={`${block.id}-order-${i}`}>
+              <span className="text-slate-400 mr-2">______</span>
+              {item}
+            </li>
+          ))}
+        </ol>
+      ) : null}
+
+      {block.type === 'numeric' ? (
+        <p className="mt-2 text-sm text-slate-700">
+          Answer: ________{block.unit ? ` ${block.unit}` : ''}
+        </p>
       ) : null}
 
       {block.type === 'image_question' ? (

@@ -2,6 +2,7 @@ import { newId } from '@/lib/utils/id'
 import type { ExamProject, TemplateField, TemplatePresetId } from '@/types/exam'
 
 type TemplateEntry = {
+  key?: string
   label: string
   value: string
   locked?: boolean
@@ -185,105 +186,292 @@ const presets: TemplatePreset[] = [
     },
     header: [
       {
+        key: 'topStripLeft',
         label: 'Top Strip Left',
         value: 'بابەت/ Linux (GUI) / قۆناغ / سێیەمی کۆمپیوتەر',
         style: { alignment: 'left', bold: false, fontSizePt: 12 },
       },
       {
+        key: 'topStripRight',
         label: 'Top Strip Right',
         value: 'سیریال قوتابی //',
         style: { alignment: 'right', bold: false, fontSizePt: 12 },
       },
       {
+        key: 'institutionLogo',
         label: 'Institution Logo',
         value: '/templates/shaqlawa-logo.png',
         displayMode: 'value_only',
         style: { alignment: 'center', bold: false, fontSizePt: 10 },
       },
       {
+        key: 'coverPageImage',
         label: 'Cover Page Image',
         value: '/templates/linux-gui-cover.png',
         displayMode: 'value_only',
         style: { alignment: 'center', bold: false, fontSizePt: 10 },
       },
       {
+        key: 'institutionName',
         label: 'Institution Name (Kurdish)',
         value:
           'پەیمانگەى شەقاڵوەى ناحكومى\nبۆ زانستەكانى (كۆمپیوتەر / كارگێرى / ژمێریارى)',
         style: { alignment: 'right', bold: true, fontSizePt: 12 },
       },
       {
+        key: 'institutionNameEn',
         label: 'Institution Name (English)',
         value: 'Shaqlawa private Institute',
         style: { alignment: 'right', bold: true, fontSizePt: 12 },
       },
       {
+        key: 'subject',
         label: 'Subject',
         value: 'Linux (GUI)',
         style: { alignment: 'right', bold: false, fontSizePt: 11 },
       },
       {
+        key: 'department',
         label: 'Department',
         value: 'کۆمپیوتەر',
         style: { alignment: 'right', bold: false, fontSizePt: 11 },
       },
       {
+        key: 'level',
         label: 'Stage',
         value: 'سێیەم',
         style: { alignment: 'right', bold: false, fontSizePt: 11 },
       },
       {
+        key: 'examDuration',
         label: 'Duration',
         value: '1:30 كاتژێر',
         style: { alignment: 'right', bold: false, fontSizePt: 11 },
       },
       {
+        key: 'academicYear',
         label: 'Academic Year',
         value: '2025-2026',
         style: { alignment: 'center', bold: true, fontSizePt: 14 },
       },
       {
+        key: 'term',
         label: 'Round',
         value: 'خوولی یهكهم',
         style: { alignment: 'center', bold: true, fontSizePt: 14 },
       },
       {
+        key: 'courseMetadata',
         label: 'Course Metadata',
         value:
           'بابەت/ Linux (GUI)\nبەشی / کۆمپیوتەر\nقۆناغ/ سێیەم\nكات/ 1:30 كاتژێر',
         style: { alignment: 'right', bold: false, fontSizePt: 11 },
       },
       {
+        key: 'sessionBanner',
         label: 'Session Banner',
         value: 'تاقی كردنهوهكانی كۆتایــــی ساڵ\n2025-2026\nخوولی یهكهم',
         style: { alignment: 'center', bold: true, fontSizePt: 14 },
       },
       {
+        key: 'coverLeftMetadata',
         label: 'Cover Left Metadata',
         value: 'بەش/\nقۆناغی/\nهۆبە /',
         style: { alignment: 'right', bold: false, fontSizePt: 12 },
       },
       {
+        key: 'studentSerialLabel',
         label: 'Student Serial Label',
         value: 'سیریال\nقوتابی',
+        style: { alignment: 'center', bold: true, fontSizePt: 12 },
+      },
+      {
+        key: 'totalMarks',
+        label: 'Total Marks',
+        value: '60',
+        style: { alignment: 'center', bold: true, fontSizePt: 12 },
+      },
+      {
+        key: 'questionCount',
+        label: 'Question Count',
+        value: '6',
         style: { alignment: 'center', bold: true, fontSizePt: 12 },
       },
     ],
     footer: [
       {
+        key: 'coverInstructions',
         label: 'Cover Instructions',
         value:
           '* بە پێنوسى دار (رصاص) دەبێ وەاڵمى پرسیارەکان بدرێتەوە بەجاف وەاڵم دانەوە بە گزى هەژمار دەکرێت.\n* قوتابى لەهەر بابەتێک گزى بکات لە هەموو بابەتەکان بە کەوتوو هەژمار دەکرێت.\n* دانانى هەر تێبینەیەکى وهێمایەک دوور لەبابەتە کە لە ناو پەراوى پرسیارەکان بەگزى هەژماردەکرێت.\n* سیریالی قوتابی دەبێت لەهەموو پەرەكان بنووسرێت.',
         style: { alignment: 'right', bold: false, fontSizePt: 10 },
       },
       {
+        key: 'footerBlessing',
         label: 'Footer Blessing',
         value: 'بەهیوای سەركەوتن',
         style: { alignment: 'center', bold: true, fontSizePt: 14 },
       },
       {
+        key: 'lecturerSignature',
         label: 'Lecturer Signature',
         value: 'مامۆستای بابەت\nایالف ناظم انور',
+        style: { alignment: 'right', bold: false, fontSizePt: 12 },
+      },
+    ],
+  },
+  {
+    id: 'shaqlawa_blank',
+    name: 'Shaqlawa Blank',
+    description:
+      'Empty Shaqlawa template ready to be filled out for any subject.',
+    rules: {
+      enforcedHeaderDisplayMode: 'value_only',
+      enforcedFooterDisplayMode: 'value_only',
+      enforcedHeaderStyle: {
+        alignment: 'right',
+        bold: true,
+        fontFamily: 'Times New Roman',
+        fontSizePt: 11,
+      },
+      enforcedFooterStyle: {
+        alignment: 'right',
+        fontFamily: 'Times New Roman',
+        fontSizePt: 10,
+      },
+    },
+    header: [
+      {
+        key: 'topStripLeft',
+        label: 'Top Strip Left',
+        value: 'بابەت/  / قۆناغ / ',
+        style: { alignment: 'left', bold: false, fontSizePt: 12 },
+      },
+      {
+        key: 'topStripRight',
+        label: 'Top Strip Right',
+        value: 'سیریال قوتابی //',
+        style: { alignment: 'right', bold: false, fontSizePt: 12 },
+      },
+      {
+        key: 'institutionLogo',
+        label: 'Institution Logo',
+        value: '',
+        displayMode: 'value_only',
+        style: { alignment: 'center', bold: false, fontSizePt: 10 },
+      },
+      {
+        key: 'coverPageImage',
+        label: 'Cover Page Image',
+        value: '',
+        displayMode: 'value_only',
+        style: { alignment: 'center', bold: false, fontSizePt: 10 },
+      },
+      {
+        key: 'institutionName',
+        label: 'Institution Name (Kurdish)',
+        value:
+          'پەیمانگەى شەقاڵوەى ناحكومى\nبۆ زانستەكانى (كۆمپیوتەر / كارگێرى / ژمێریارى)',
+        style: { alignment: 'right', bold: true, fontSizePt: 12 },
+      },
+      {
+        key: 'institutionNameEn',
+        label: 'Institution Name (English)',
+        value: 'Shaqlawa private Institute',
+        style: { alignment: 'right', bold: true, fontSizePt: 12 },
+      },
+      {
+        key: 'subject',
+        label: 'Subject',
+        value: '',
+        style: { alignment: 'right', bold: false, fontSizePt: 11 },
+      },
+      {
+        key: 'department',
+        label: 'Department',
+        value: '',
+        style: { alignment: 'right', bold: false, fontSizePt: 11 },
+      },
+      {
+        key: 'level',
+        label: 'Stage',
+        value: '',
+        style: { alignment: 'right', bold: false, fontSizePt: 11 },
+      },
+      {
+        key: 'examDuration',
+        label: 'Duration',
+        value: '',
+        style: { alignment: 'right', bold: false, fontSizePt: 11 },
+      },
+      {
+        key: 'academicYear',
+        label: 'Academic Year',
+        value: '',
+        style: { alignment: 'center', bold: true, fontSizePt: 14 },
+      },
+      {
+        key: 'term',
+        label: 'Round',
+        value: '',
+        style: { alignment: 'center', bold: true, fontSizePt: 14 },
+      },
+      {
+        key: 'courseMetadata',
+        label: 'Course Metadata',
+        value:
+          'بابەت/\nبەشی /\nقۆناغ/\nكات/',
+        style: { alignment: 'right', bold: false, fontSizePt: 11 },
+      },
+      {
+        key: 'sessionBanner',
+        label: 'Session Banner',
+        value: 'تاقی كردنهوهكانی كۆتایــــی ساڵ\n\n',
+        style: { alignment: 'center', bold: true, fontSizePt: 14 },
+      },
+      {
+        key: 'coverLeftMetadata',
+        label: 'Cover Left Metadata',
+        value: 'بەش/\nقۆناغی/\nهۆبە /',
+        style: { alignment: 'right', bold: false, fontSizePt: 12 },
+      },
+      {
+        key: 'studentSerialLabel',
+        label: 'Student Serial Label',
+        value: 'سیریال\nقوتابی',
+        style: { alignment: 'center', bold: true, fontSizePt: 12 },
+      },
+      {
+        key: 'totalMarks',
+        label: 'Total Marks',
+        value: '60',
+        style: { alignment: 'center', bold: true, fontSizePt: 12 },
+      },
+      {
+        key: 'questionCount',
+        label: 'Question Count',
+        value: '6',
+        style: { alignment: 'center', bold: true, fontSizePt: 12 },
+      },
+    ],
+    footer: [
+      {
+        key: 'coverInstructions',
+        label: 'Cover Instructions',
+        value:
+          '* بە پێنوسى دار (رصاص) دەبێ وەاڵمى پرسیارەکان بدرێتەوە بەجاف وەاڵم دانەوە بە گزى هەژمار دەکرێت.\n* قوتابى لەهەر بابەتێک گزى بکات لە هەموو بابەتەکان بە کەوتوو هەژمار دەکرێت.\n* دانانى هەر تێبینەیەکى وهێمایەک دوور لەبابەتە کە لە ناو پەراوى پرسیارەکان بەگزى هەژماردەکرێت.\n* سیریالی قوتابی دەبێت لەهەموو پەرەكان بنووسرێت.',
+        style: { alignment: 'right', bold: false, fontSizePt: 10 },
+      },
+      {
+        key: 'footerBlessing',
+        label: 'Footer Blessing',
+        value: 'بەهیوای سەركەوتن',
+        style: { alignment: 'center', bold: true, fontSizePt: 14 },
+      },
+      {
+        key: 'lecturerSignature',
+        label: 'Lecturer Signature',
+        value: 'مامۆستای بابەت\n',
         style: { alignment: 'right', bold: false, fontSizePt: 12 },
       },
     ],
@@ -296,6 +484,7 @@ const toField = (
   preset: TemplatePreset,
 ): TemplateField => ({
   id: newId(),
+  key: entry.key,
   label: entry.label,
   value: entry.value,
   section,

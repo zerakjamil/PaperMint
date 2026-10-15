@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 import { createBlock } from '@/features/questions/blockFactory'
 import { createDefaultProject } from '@/features/template/defaultTemplate'
-import { createShaqlawaLinuxGuiProject } from '@/features/template/linuxGuiTemplate'
+import { createShaqlawaLinuxGuiProject, createShaqlawaBlankProject } from '@/features/template/linuxGuiTemplate'
 import { applyTemplatePreset } from '@/features/template/templateLibrary'
 import type { SaveHandle } from '@/lib/file-system/projectFile'
 import { newId } from '@/lib/utils/id'
@@ -36,6 +36,7 @@ type ExamStoreState = {
   setScreen: (screen: Screen) => void
   startNewProject: () => void
   startShaqlawaLinuxGuiProject: () => void
+  startShaqlawaBlankProject: () => void
   openProject: (project: ExamProject, fileName?: string) => void
   addTemplateField: (section: 'header' | 'footer') => void
   updateTemplateField: (
@@ -179,6 +180,20 @@ export const useExamStore = create<ExamStoreState>((set, get) => ({
       selectedSectionId: project.sections[0]?.id ?? '',
       selectedBlockId: project.sections[0]?.items[0]?.id ?? null,
       projectFileName: 'linux-gui-template.exam.json',
+      saveHandle: null,
+      screen: 'editor',
+      revision: 0,
+      persistedRevision: 0,
+      lastSavedAt: null,
+    })
+  },
+  startShaqlawaBlankProject: () => {
+    const project = createShaqlawaBlankProject()
+    set({
+      project,
+      selectedSectionId: project.sections[0]?.id ?? '',
+      selectedBlockId: project.sections[0]?.items[0]?.id ?? null,
+      projectFileName: 'shaqlawa-blank-template.exam.json',
       saveHandle: null,
       screen: 'editor',
       revision: 0,

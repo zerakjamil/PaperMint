@@ -32,9 +32,14 @@ import type {
 const blockLabel: Record<QuestionBlock['type'], string> = {
   essay: 'Essay',
   mcq: 'Multiple Choice',
+  multi_select_mcq: 'Multi-Select MCQ',
   true_false: 'True / False',
   fill_blank: 'Fill in the Blank',
+  short_answer: 'Short Answer',
   image_question: 'Image Question',
+  matching: 'Matching',
+  ordering: 'Ordering',
+  numeric: 'Numeric',
 }
 
 const dataUrlToBytes = (dataUrl: string) => {
@@ -112,6 +117,11 @@ const templateFieldParagraph = async (
       return null
     }
 
+    const spacingBefore =
+      field.style?.paragraphSpacing?.beforePt ?? options.spacingBefore ?? 0
+    const spacingAfter =
+      field.style?.paragraphSpacing?.afterPt ?? options.spacingAfter ?? 0
+
     return new Paragraph({
       alignment: resolveAlignment(field.style, options.align),
       children: [
@@ -125,7 +135,10 @@ const templateFieldParagraph = async (
           color: field.style?.colorHex,
         }),
       ],
-      spacing: { after: options.spacingAfter, before: options.spacingBefore },
+      spacing: {
+        after: spacingAfter * 20,
+        before: spacingBefore * 20,
+      },
     })
   }
 
@@ -190,6 +203,27 @@ const questionParagraphs = async (
     })
   }
 
+  if (block.type === 'multi_select_mcq') {
+    children.push(
+      new Paragraph({
+        children: [new TextRun('(Select all that apply)')],
+        spacing: { after: 40 },
+      }),
+    )
+    block.options.forEach((option, optionIndex) => {
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun(
+              `${String.fromCharCode(65 + optionIndex)}. ${option || 'Option'}`,
+            ),
+          ],
+          spacing: { after: 50 },
+        }),
+      )
+    })
+  }
+
   if (block.type === 'true_false') {
     children.push(
       new Paragraph({
@@ -219,6 +253,18 @@ const questionParagraphs = async (
     )
   }
 
+  if (block.type === 'short_answer') {
+    const lines = block.answerLines ?? 3
+    for (let i = 0; i < lines; i += 1) {
+      children.push(
+        new Paragraph({
+          children: [new TextRun('____________________________________________________')],
+          spacing: { after: 60 },
+        }),
+      )
+    }
+  }
+
   if (block.type === 'essay') {
     const lines = block.answerLines ?? 4
     for (let i = 0; i < lines; i += 1) {
@@ -229,6 +275,41 @@ const questionParagraphs = async (
         }),
       )
     }
+  }
+
+  if (block.type === 'matching') {
+    block.leftItems.forEach((leftItem, i) => {
+      const rightItem = i < block.rightItems.length ? block.rightItems[i] : '________'
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun(`${String.fromCharCode(65 + i)}. ${leftItem}  →  ${rightItem}`),
+          ],
+          spacing: { after: 50 },
+        }),
+      )
+    })
+  }
+
+  if (block.type === 'ordering') {
+    block.items.forEach((item, i) => {
+      children.push(
+        new Paragraph({
+          children: [new TextRun(`${i + 1}. ______  ${item}`)],
+          spacing: { after: 50 },
+        }),
+      )
+    })
+  }
+
+  if (block.type === 'numeric') {
+    const unitLabel = block.unit ? ` (in ${block.unit})` : ''
+    children.push(
+      new Paragraph({
+        children: [new TextRun(`Answer: ________${unitLabel}`)],
+        spacing: { after: 50 },
+      }),
+    )
   }
 
   if (block.type === 'image_question') {
@@ -287,7 +368,7 @@ const questionParagraphs = async (
 
   if (mode !== 'student') {
     const answerText = getBlockAnswerText(block)
-    if (answerText && block.type === 'mcq') {
+    if (answerText && (block.type === 'mcq' || block.type === 'multi_select_mcq' || block.type === 'true_false' || block.type === 'fill_blank' || block.type === 'numeric' || block.type === 'matching' || block.type === 'ordering' || block.type === 'short_answer')) {
       children.push(
         new Paragraph({
           children: [new TextRun({ text: answerText, bold: true })],
@@ -384,7 +465,7 @@ export const buildExamDocx = async (
         continue
       }
 
-      // eslint-disable-next-line no-await-in-loop
+       
       questionParagraphCollection.push(
         await questionParagraphs(questionIndex, block, project.assets, mode),
       )

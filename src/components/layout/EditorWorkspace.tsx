@@ -1,4 +1,5 @@
 import type {
+  BlockType,
   QuestionBankEntry,
   SnippetEntry,
   SnippetKind,
@@ -69,7 +70,7 @@ type Props = {
   onRequestInsert: (index: number) => void
   onCloseInsertDialog: () => void
   onInsertType: (
-    type: 'mcq' | 'true_false' | 'fill_blank' | 'essay' | 'image_question',
+    type: BlockType,
     insertionIndex: number,
   ) => void
   onInsertFromBank: (entryId: string, insertionIndex: number) => void
@@ -190,6 +191,9 @@ export const EditorWorkspace = ({
       onReorder={onReorder}
       onAttachImageFile={onAttachImageFile}
       onCanvasDropImage={onCanvasDropImage}
+      onTemplateFieldUpdate={(fieldId, value) =>
+        onTemplateFieldUpdate(fieldId, { value })
+      }
     />
 
     <RightPropertiesPanel

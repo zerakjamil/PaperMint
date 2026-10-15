@@ -87,6 +87,7 @@ function App() {
     setScreen,
     startNewProject,
     startShaqlawaLinuxGuiProject,
+    startShaqlawaBlankProject,
     openProject,
     addTemplateField,
     updateTemplateField,
@@ -212,6 +213,13 @@ function App() {
     setDraftAutosaveSource('local')
     void clearAutosaveProjectWithFallback(window.localStorage)
     setStatus('Started Shaqlawa Linux (GUI) template project.')
+  }
+
+  const startShaqlawaBlank = () => {
+    startShaqlawaBlankProject()
+    setDraftAutosaveSource('local')
+    void clearAutosaveProjectWithFallback(window.localStorage)
+    setStatus('Started Shaqlawa Blank template project.')
   }
 
   useEffect(() => {
@@ -548,6 +556,7 @@ function App() {
         <HomeScreen
           onNew={startNew}
           onNewLinuxGuiTemplate={startLinuxGuiTemplate}
+          onNewShaqlawaBlank={startShaqlawaBlank}
           onOpen={() => void handleNativeOpen()}
         />
         <input

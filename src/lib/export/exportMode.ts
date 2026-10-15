@@ -31,6 +31,16 @@ export const getBlockAnswerText = (block: QuestionBlock) => {
     return `Correct option: ${label}. ${optionText}`
   }
 
+  if (block.type === 'multi_select_mcq') {
+    if (!block.correctIndices || block.correctIndices.length === 0) {
+      return null
+    }
+    const labels = block.correctIndices
+      .map((i) => `${String.fromCharCode(65 + i)}. ${block.options[i] || 'Option'}`)
+      .join('; ')
+    return `Correct options: ${labels}`
+  }
+
   if (block.type === 'true_false') {
     if (block.answer === undefined) {
       return null
@@ -45,6 +55,42 @@ export const getBlockAnswerText = (block: QuestionBlock) => {
     }
 
     return `Expected answer(s): ${block.answers.join('; ')}`
+  }
+
+  if (block.type === 'short_answer') {
+    if (!block.suggestedAnswer) {
+      return null
+    }
+    return `Suggested answer: ${block.suggestedAnswer}`
+  }
+
+  if (block.type === 'numeric') {
+    if (block.correctAnswer === undefined) {
+      return null
+    }
+    const tolerance = block.tolerance ? ` (±${block.tolerance})` : ''
+    const unit = block.unit ? ` ${block.unit}` : ''
+    return `Correct answer: ${block.correctAnswer}${tolerance}${unit}`
+  }
+
+  if (block.type === 'matching') {
+    if (!block.correctPairs || block.correctPairs.length === 0) {
+      return null
+    }
+    const lines = block.correctPairs.map(
+      ([li, ri]) => `${block.leftItems[li] ?? li} → ${block.rightItems[ri] ?? ri}`,
+    )
+    return `Correct pairs:\n${lines.join('\n')}`
+  }
+
+  if (block.type === 'ordering') {
+    if (!block.correctOrder || block.correctOrder.length === 0) {
+      return null
+    }
+    const ordered = block.correctOrder
+      .map((idx) => block.items[idx] ?? idx)
+      .join(' → ')
+    return `Correct order: ${ordered}`
   }
 
   return null

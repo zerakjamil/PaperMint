@@ -36,7 +36,7 @@ describe('InsertQuestionDialog', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /short answer/i }))
+    fireEvent.click(screen.getByRole('button', { name: /short answer \/ essay/i }))
     expect(onSelect).toHaveBeenCalledWith('essay', 2)
   })
 
