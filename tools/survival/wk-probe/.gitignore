@@ -1,3 +1,4 @@
 wkprobe
 *.log
 *.csv
+!campaign-*.csv

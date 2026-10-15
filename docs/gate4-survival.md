@@ -1,6 +1,9 @@
 # Gate 4 — Survival: state map and kill-test program
 
-Status: groundwork + first probe campaign (results in §5).
+Status: Layer 1 probe complete — WKWebView storage was measured to **lose
+acknowledged writes under `kill -9`** (8 of 100 kills; §5). The product fix
+this forces (native fsync'd save signal) is gate work and is next, together
+with the Layer 2 real-app baseline.
 Subject under test: the built app bundle (published 0.9.0 extracted copy; replaced
 by each new release). Map verified against the tree at `cf3575a`.
 
@@ -13,7 +16,7 @@ codebase and how it gets proven by machines, not by reading code.
 
 | Surface | Code | Notes |
 | --- | --- | --- |
-| Autosave draft | `src/App.tsx:196-202, 247-290`, `src/features/project/autosaveStorage.ts` | Debounced `AUTOSAVE_DELAY_MS = 1400` (`App.tsx:43`) after `isDirty` while on the editor screen. Write order: **localStorage → IndexedDB → slim localStorage** (images stripped). Restore on boot (`App.tsx:225-245`), status reads "Recovered unsaved draft." |
+| Autosave draft | `src/App.tsx:196-202, 247-290`, `src/features/project/autosaveStorage.ts` | Debounced `AUTOSAVE_DELAY_MS = 1400` (`App.tsx:43`) after `isDirty` while on the editor screen. **Fallback chain, not triple-write**: localStorage first; IndexedDB only if the localStorage write throws (quota); slim localStorage (images stripped) only if both fail (`autosaveStorage.ts:190-216`). Status after success: "Autosaved to local draft." / "…IndexedDB draft." / "…locally (images omitted…)". The `saveHandle` file branch (`App.tsx:263`) is **dead on WKWebView** — no `showSaveFilePicker` — so every macOS autosave today is a single localStorage `setItem`. Restore on boot reads localStorage first, then IndexedDB (`App.tsx:225-245`). |
 | Manual save | `src/lib/file-system/projectFile.ts`, `App.tsx:388-430` | `showSaveFilePicker` is **Chromium-only**; on the macOS WKWebView it does not exist, so `saveAs` falls through to `downloadProject` — an anchor download. Where that lands in the shipped app is **unpinned** (first-run item). |
 | Manual open | `App.tsx:292-386` | Same API story: falls back to `<input type="file">` (native panel works in WKWebView). `.docx` import additionally goes through the Rust command below. |
 | Rust fs | `src-tauri/src/lib.rs:10`, `src-tauri/src/fs/mod.rs` | **Import-only.** One command: `import_docx_template`. No project writes, no save path, no dialog/fs plugins (`Cargo.toml`, `capabilities/`). |
@@ -115,12 +118,38 @@ Two layers, in order:
   plus status texts ("Started new exam project.", "Autosaved to …").
 - **2026-10-15, Layer 1 probe (tools/survival/wk-probe).** WKWebView host
   hammering `localStorage.setItem`; `kill -9` at random moments; invariant
-  `recovered seq >= max acked seq`.
+  `recovered seq >= max acked seq`. The durable witness (`ACK n`) is an
+  `F_FULLFSYNC`'ed log line written only after `setItem` returns — the exact
+  analogue of the app's "Autosaved…" status.
   - 3-cycle validation: **PASS** — recovered `seq` equaled the last acked
     write exactly (`seq == ACKMAX`), ~150-200 writes/s at 8 KB payload.
-  - 100-cycle campaign (8 KB, 2-12 s random kill times): RESULTS PENDING.
+  - **100-cycle campaign (8 KB payload, 2-12 s random kill windows): 92 PASS,
+    8 FAIL_LOSS** (evidence: `tools/survival/wk-probe/campaign-2026-10-15.csv`).
+    In 8 of 100 SIGKILLs the recovered state was **older than the last
+    acknowledged write** — losses of 1, 12, 82, 73, 33, 5, 3, 32 writes. Zero
+    integrity failures: whenever a value was present it was self-consistent
+    (`seq == rec_i`); the failure mode is age, not corruption.
+  - Interpretation: after `setItem` returns, WKWebView holds the write in
+    user-space memory and flushes lazily; SIGKILL discards the unflushed tail.
+    7 of the 8 losses fell in the second half of the campaign while this
+    machine was compiling and running test suites — consistent with a
+    time-based flush starved under load. The tail lost was 1-82 writes
+    (≈5 ms-0.5 s at probe cadence); at app cadence the unit at risk is **the
+    most recent autosaved draft** — precisely the state the status line has
+    just called "Autosaved".
+  - Consequence, stated plainly: **no WKWebView storage API can satisfy I1.**
+    The localStorage draft is a cache, not a save. The gate demands zero loss
+    after an acknowledged save, so the durable signal has to come from native
+    code: a Rust command that writes the project JSON to app data (temp file +
+    fsync + rename + directory fsync) and only then lets the UI mark the
+    project persisted. Web storage stays as the instant-recovery cache. This
+    is the next build item; Layer 2 re-runs after it lands, with this campaign
+    as the "before" baseline.
 
 ## 6. Open questions
 
+- Does IndexedDB (its transaction-`complete` boundary) honor durability across
+  SIGKILL any better than localStorage? Matters only for the quota-fallback
+  path (localStorage full → IDB), but the same probe recipe answers it.
 - None for the user beyond what's already on the intake list (oldest supported
   laptop arrives with raw material). The program runs without it.
