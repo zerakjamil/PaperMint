@@ -34,4 +34,7 @@ jobs:
         with:
           workspaces: src-tauri
       - run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
+      # generate_context! requires frontendDist to exist; on a clean checkout dist/ is absent.
+      # Placeholder keeps this job about Rust — the web job builds the real frontend.
+      - run: mkdir -p dist && printf '<!doctype html><title>ci</title>' > dist/index.html
       - run: cargo check --manifest-path src-tauri/Cargo.toml
