@@ -29,5 +29,9 @@ mempalace.yaml
 entities.json
 
 agents/
-.github/
+.github/*
+!.github/workflows/
 .lancedb/
+chroma.sqlite3
+knowledge_graph.sqlite3-shm
+knowledge_graph.sqlite3-wal
