@@ -3,6 +3,8 @@
 Date: 2026-04-22
 Pass type: Stabilization + regression coverage
 
+> Historical record. For the current release machinery (versioning, signing keys, updater), see `release-process.md`.
+
 ## Scope Guard
 
 - [x] No new product features added

@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/Button'
+import { UpdateCheck } from '@/components/layout/UpdateCheck'
 
 type Props = {
   onNew: () => void
@@ -30,6 +31,8 @@ export const HomeScreen = ({ onNew, onNewLinuxGuiTemplate, onNewShaqlawaBlank, o
           Open Project
         </Button>
       </div>
+
+      <UpdateCheck />
     </div>
   </main>
 )
