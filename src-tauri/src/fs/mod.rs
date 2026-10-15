@@ -429,6 +429,19 @@ fn parse_part_blocks(
                     blocks.push(block);
                 }
             }
+            // In word/document.xml all content sits inside the w:body wrapper
+            // (w:document > w:body > w:p), one level deeper than in header and
+            // footer parts (w:hdr > w:p). Without this arm the body of every
+            // real DOCX imports as empty.
+            "body" => {
+                blocks.extend(parse_part_blocks_in_node(
+                    child,
+                    source_part,
+                    rels,
+                    media,
+                    warnings,
+                ));
+            }
             "std" => {}
             _ => {}
         }
@@ -1092,8 +1105,44 @@ mod tests {
     }
 
     #[test]
+    fn extracts_body_blocks() {
+        let docx = create_test_docx();
+        let encoded = STANDARD.encode(docx);
+        let parsed = import_docx_template_from_base64(&encoded).unwrap();
+
+        assert!(
+            parsed
+                .body
+                .iter()
+                .any(|b| b.text.contains("Explain diffusion")),
+            "document body paragraphs should import, got: {:?}",
+            parsed.body
+        );
+    }
+
+    #[test]
     fn rejects_invalid_base64() {
         let error = import_docx_template_from_base64("not-valid-base64").unwrap_err();
         assert!(matches!(error, DocxImportError::InvalidBase64));
+    }
+
+    /// Fixture utility for the Gate 1 clone-and-edit pipeline
+    /// (tools/clone-edit/run.sh): with `PAPERMINT_IMPORT_DOCX` pointing at a
+    /// .docx file, dumps the serialized import payload between markers for the
+    /// TypeScript stage. No-op without the env var, so CI stays clean.
+    #[test]
+    fn dump_import_payload_fixture() {
+        let path = match std::env::var("PAPERMINT_IMPORT_DOCX") {
+            Ok(path) => path,
+            Err(_) => return,
+        };
+        let bytes = std::fs::read(&path).expect("fixture docx should be readable");
+        let parsed = import_docx_template_from_bytes(&bytes).expect("fixture docx should import");
+        println!("<<<PAPERMINT_IMPORT_PAYLOAD>>>");
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&parsed).expect("payload should serialize")
+        );
+        println!("<<<PAPERMINT_IMPORT_PAYLOAD_END>>>");
     }
 }
